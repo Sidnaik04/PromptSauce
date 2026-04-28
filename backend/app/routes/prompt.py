@@ -1,14 +1,25 @@
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from app.schemas.prompt_schema import PromptRequest
-from app.agents.analyzer import AnalyzerAgent
+from app.graph.workflow import build_graph
 
 router = APIRouter()
 
-analyzer = AnalyzerAgent()
+graph = build_graph()
 
 
 @router.post("/enhance")
 def enhance_prompt(request: PromptRequest):
-    analysis, debug = analyzer.run(request.model_dump())
+    data = request.model_dump()
 
-    return {"analysis": analysis, "debug": {"analyzer": debug}}
+    result = graph.invoke(
+        {"input": data, "debug": {}, "evaluate": data.get("evaluate", False)}
+    )
+
+    return {
+        "enhanced_prompt": result.get("enhanced_prompt"),
+        "analysis": result.get("analysis"),
+        "evaluation": result.get("evaluation"),
+        "critic": result.get("critic"),
+        "debug": result.get("debug"),
+    }
