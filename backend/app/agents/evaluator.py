@@ -7,20 +7,14 @@ from app.services.json_repair import repair_json, clean_json_text
 
 class EvaluatorAgent:
     def __init__(self):
-        self.llm = LLMService()
         self.prompt_template = load_prompt("app/core/prompts/evaluator_prompt.txt")
 
-    def run(self, original: str, enhanced: str):
-        prompt = self.prompt_template.format(
-            original=original,
-            enhanced=enhanced
-        )
+    def run(self, original: str, enhanced: str, llm: LLMService):
+        prompt = self.prompt_template.format(original=original, enhanced=enhanced)
 
-        raw_output = self.llm.generate(prompt)
+        raw_output = llm.generate(prompt)
 
-        debug = {
-            "raw_output": raw_output
-        }
+        debug = {"raw_output": raw_output}
 
         try:
             cleaned = clean_json_text(raw_output)
@@ -38,11 +32,11 @@ class EvaluatorAgent:
                 parsed = {
                     "scores": {
                         "original": {"clarity": 5, "completeness": 5, "usefulness": 5},
-                        "enhanced": {"clarity": 5, "completeness": 5, "usefulness": 5}
+                        "enhanced": {"clarity": 5, "completeness": 5, "usefulness": 5},
                     },
                     "winner": "original",
                     "confidence": 0.5,
-                    "reasoning": "Fallback due to parsing failure"
+                    "reasoning": "Fallback due to parsing failure",
                 }
 
         validated = EvaluatorOutput(**parsed)

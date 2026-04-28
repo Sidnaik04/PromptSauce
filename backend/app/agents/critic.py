@@ -6,19 +6,16 @@ from app.services.json_repair import repair_json, clean_json_text
 
 class CriticAgent:
     def __init__(self):
-        self.llm = LLMService()
         self.prompt_template = load_prompt("app/core/prompts/critic_prompt.txt")
 
-    def run(self, evaluation: dict):
+    def run(self, evaluation: dict, llm: LLMService):
         evaluation_str = json.dumps(evaluation, indent=2)
-        
+
         prompt = self.prompt_template.format(evaluation=evaluation_str)
 
-        raw_output = self.llm.generate(prompt)
+        raw_output = llm.generate(prompt)
 
-        debug = {
-            "raw_output": raw_output
-        }
+        debug = {"raw_output": raw_output}
 
         try:
             cleaned = clean_json_text(raw_output)
@@ -36,7 +33,7 @@ class CriticAgent:
                 parsed = {
                     "is_consistent": True,
                     "issues": [],
-                    "final_verdict": evaluation.get("winner", "original")
+                    "final_verdict": evaluation.get("winner", "original"),
                 }
 
         return parsed, debug

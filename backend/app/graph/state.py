@@ -22,3 +22,5 @@ class GraphState(TypedDict, total=False):
 
     # Control
     evaluate: bool
+    
+    llm: Any

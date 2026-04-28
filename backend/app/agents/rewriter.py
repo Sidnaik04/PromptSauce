@@ -4,7 +4,6 @@ from app.core.prompt_loader import load_prompt
 
 class RewriterAgent:
     def __init__(self):
-        self.llm = LLMService()
         self.prompt_template = load_prompt("app/core/prompts/rewriter_prompt.txt")
 
     def build_prompt(self, input_data: dict, analysis: dict) -> str:
@@ -28,10 +27,10 @@ class RewriterAgent:
             recommended_structure=analysis.get("recommended_structure"),
         )
 
-    def run(self, input_data: dict, analysis: dict):
+    def run(self, input_data: dict, analysis: dict, llm: LLMService):
         prompt = self.build_prompt(input_data, analysis)
 
-        output = self.llm.generate(prompt)
+        output = llm.generate(prompt)
 
         debug = {"rewriter_prompt": prompt, "rewriter_output": output}
 

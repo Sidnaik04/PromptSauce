@@ -17,3 +17,7 @@ class PromptRequest(BaseModel):
     metadata: Optional[Metadata] = None
     evaluate: bool = False
     
+class Metadata(BaseModel):
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    api_key: Optional[str] = None

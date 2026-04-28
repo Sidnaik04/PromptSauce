@@ -7,10 +7,9 @@ from app.services.json_repair import repair_json, clean_json_text
 
 class AnalyzerAgent:
     def __init__(self):
-        self.llm = LLMService()
         self.prompt_template = load_prompt("app/core/prompts/analyzer_prompt.txt")
 
-    def run(self, input_data: dict):
+    def run(self, input_data: dict, llm: LLMService):
         prompt = self.prompt_template.format(
             prompt=input_data.get("prompt"),
             mode=input_data.get("mode"),
@@ -18,7 +17,7 @@ class AnalyzerAgent:
             preferences=input_data.get("preferences"),
         )
 
-        raw_output = self.llm.generate(prompt)
+        raw_output = llm.generate(prompt)
 
         debug = {"raw_output": raw_output}
 
