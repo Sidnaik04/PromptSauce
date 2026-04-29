@@ -1,5 +1,6 @@
 from app.services.llm_service import LLMService
 from app.core.prompt_loader import load_prompt
+from app.core.modes import get_mode_config
 
 
 class RewriterAgent:
@@ -7,24 +8,30 @@ class RewriterAgent:
         self.prompt_template = load_prompt("app/core/prompts/rewriter_prompt.txt")
 
     def build_prompt(self, input_data: dict, analysis: dict) -> str:
-        preferences = input_data.get("preferences") or {}
+        mode = input_data.get("mode")
+        mode_config = get_mode_config(mode)
 
-        tone = preferences.get("tone")
-        output_format = preferences.get("output_format")
+        role = (
+            mode_config["role"]
+            if mode_config
+            else analysis.get("recommended_structure", {}).get("role")
+        )
+        constraints = (
+            mode_config["constraints"]
+            if mode_config
+            else analysis.get("recommended_structure", {}).get("constraints")
+        )
 
         return self.prompt_template.format(
             prompt=input_data.get("prompt"),
-            mode=input_data.get("mode"),
+            mode=mode,
             context=input_data.get("context"),
-            preferences={
-                "tone": tone if tone else "not specified",
-                "output_format": output_format if output_format else "not specified",
-            },
+            preferences=input_data.get("preferences"),
             intent=analysis.get("intent"),
             domain=analysis.get("domain"),
             complexity=analysis.get("complexity_level"),
             missing_context=analysis.get("missing_context"),
-            recommended_structure=analysis.get("recommended_structure"),
+            recommended_structure={"role": role, "constraints": constraints},
         )
 
     def run(self, input_data: dict, analysis: dict, llm: LLMService):

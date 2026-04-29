@@ -12,7 +12,8 @@ from app.services.db_service import (
     check_usage_limit,
 )
 from app.services.llm_service import LLMService
-from app.services.cache_service import get_cached, set_cache
+from app.services.rate_limiter import is_rate_limited
+from app.services.redis_cache import get_cached, set_cache
 from app.schemas.prompt_schema import PromptRequest
 from app.graph.workflow import build_graph
 
@@ -34,6 +35,14 @@ def enhance_prompt(
 
     metadata = data.get("metadata", {}) or {}
     user_id = str(user.id)
+
+    is_limited, count = is_rate_limited(user_id)
+
+    if is_limited:
+        raise HTTPException(
+            status_code=429, detail=f"Rate limit exceeded. Try again later."
+        )
+
     user_api_key = metadata.get("api_key")
 
     allowed, mode = check_usage_limit(db, user_id, bool(user_api_key))
@@ -108,5 +117,7 @@ def enhance_prompt(
 
     if settings.DEBUG:
         response["debug"] = result.get("debug")
+
+    response["rate_limit"] = {"current": count, "limit": 20}
 
     return response

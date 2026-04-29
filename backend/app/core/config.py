@@ -15,6 +15,7 @@ class Settings:
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
     )
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "client_id")
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis_url")
 
 
 settings = Settings()
