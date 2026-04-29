@@ -1,6 +1,16 @@
-from sqlalchemy import Column, Integer, String, Text, Float, ForeignKey, DateTime 
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    Float,
+    ForeignKey,
+    DateTime,
+    Boolean,
+)
 from sqlalchemy.sql import func
 from app.db.database import Base
+
 
 class Prompt(Base):
     __tablename__ = "prompts"
@@ -13,7 +23,8 @@ class Prompt(Base):
     mode = Column(String)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
+
 class Evaluation(Base):
     __tablename__ = "evaluations"
 
@@ -25,7 +36,8 @@ class Evaluation(Base):
     improvement_score = Column(Float)
 
     feedback = Column(Text)
-    
+
+
 class Usage(Base):
     __tablename__ = "usage"
 
@@ -34,3 +46,16 @@ class Usage(Base):
 
     request_count = Column(Integer, default=0)
     last_used = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

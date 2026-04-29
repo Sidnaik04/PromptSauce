@@ -3,6 +3,7 @@ from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logger import logger
+from app.core.dependencies import get_current_user
 from app.db.database import get_db
 from app.services.db_service import (
     save_prompt,
@@ -24,7 +25,7 @@ graph = build_graph()
 def enhance_prompt(
     request: PromptRequest,
     db: Session = Depends(get_db),
-    x_client_id: str = Header(default="anonymous"),
+    user=Depends(get_current_user),
 ):
     data = request.model_dump()
 
@@ -32,7 +33,7 @@ def enhance_prompt(
         raise HTTPException(status_code=400, detail="Prompt too long")
 
     metadata = data.get("metadata", {}) or {}
-    user_id = x_client_id
+    user_id = str(user.id)
     user_api_key = metadata.get("api_key")
 
     allowed, mode = check_usage_limit(db, user_id, bool(user_api_key))
@@ -86,7 +87,12 @@ def enhance_prompt(
         track_usage(db, user_id)
 
     prompt_record = save_prompt(
-        db, {**data, "enhanced_prompt": result.get("enhanced_prompt")}
+        db,
+        {
+            **data,
+            "enhanced_prompt": result.get("enhanced_prompt"),
+            "metadata": {"user_id": user_id},
+        },
     )
 
     if result.get("evaluation"):
