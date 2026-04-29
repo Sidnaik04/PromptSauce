@@ -22,5 +22,13 @@ class GraphState(TypedDict, total=False):
 
     # Control
     evaluate: bool
-    
+
     llm: Any
+
+    mode: str
+
+    difficulty: str
+
+    explanation: str
+    
+    insights: str 

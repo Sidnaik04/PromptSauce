@@ -105,3 +105,22 @@ def get_mode_config(mode: str):
     if mode == "auto":
         return None  # handled later
     return MODES.get(mode, MODES["study"])
+
+
+MODE_EVAL = {
+    "programming": ["correctness", "clarity", "code_quality"],
+    "study": ["clarity", "explanation_depth", "usefulness"],
+    "writing": ["clarity", "tone", "engagement"],
+    "business": ["clarity", "actionability", "strategic_thinking"],
+    "email": ["clarity", "tone", "conciseness"],
+    "interview": ["clarity", "impact", "structure"],
+    "fitness": ["clarity", "practicality", "safety"],
+    "legal": ["clarity", "accuracy", "caution"],
+    "advice": ["clarity", "empathy", "usefulness"],
+    "psychology": ["clarity", "insight", "responsibility"],
+    "data_analysis": ["clarity", "reasoning", "insight"],
+}
+
+
+def get_eval_criteria(mode: str):
+    return MODE_EVAL.get(mode, ["clarity", "completeness", "usefulness"])

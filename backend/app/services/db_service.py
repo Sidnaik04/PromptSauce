@@ -6,7 +6,6 @@ def save_prompt(db: Session, data: dict):
     prompt = models.Prompt(
         user_id=data.get("metadata", {}).get("user_id"),
         original_prompt=data.get("prompt"),
-        enhanced_prompt=data.get("enhanced_prompt"),
         mode=data.get("mode"),
     )
     db.add(prompt)
@@ -14,6 +13,39 @@ def save_prompt(db: Session, data: dict):
     db.refresh(prompt)
 
     return prompt
+
+
+def save_prompt_version(
+    db: Session, prompt_id: int, enhanced_prompt: str, score: float = None
+):
+    existing_versions = (
+        db.query(models.PromptVersion).filter_by(prompt_id=prompt_id).count()
+    )
+
+    version = models.PromptVersion(
+        prompt_id=prompt_id,
+        version_number=existing_versions + 1,
+        enhanced_prompt=enhanced_prompt,
+        score=score,
+    )
+
+    db.add(version)
+    db.commit()
+    db.refresh(version)
+
+    return version
+
+
+def mark_best_version(db: Session, prompt_id: int, best_version_id: int):
+    db.query(models.PromptVersion).filter_by(prompt_id=prompt_id).update(
+        {"is_best": False}
+    )
+
+    db.query(models.PromptVersion).filter_by(id=best_version_id).update(
+        {"is_best": True}
+    )
+
+    db.commit()
 
 
 def save_evaluation(db: Session, prompt_id: int, evaluation: dict):
@@ -64,3 +96,43 @@ def check_usage_limit(db, user_id: str, has_api_key: bool):
         return True, "free"
 
     return False, "limit_exceeded"
+
+
+def get_user_prompts(db: Session, user_id: str):
+    return (
+        db.query(models.Prompt)
+        .filter_by(user_id=user_id)
+        .order_by(models.Prompt.created_at.desc())
+        .all()
+    )
+
+
+def get_prompt_versions(db: Session, prompt_id: int):
+    return (
+        db.query(models.PromptVersion)
+        .filter_by(prompt_id=prompt_id)
+        .order_by(models.PromptVersion.version_number.asc())
+        .all()
+    )
+
+
+def get_best_version(db: Session, prompt_id: int):
+    return (
+        db.query(models.PromptVersion)
+        .filter_by(prompt_id=prompt_id, is_best=True)
+        .first()
+    )
+
+
+def get_top_prompts(db, user_id: str, limit: int = 5):
+    return (
+        db.query(models.PromptVersion, models.Prompt)
+        .join(models.Prompt, models.Prompt.id == models.PromptVersion.prompt_id)
+        .filter(models.Prompt.user_id == user_id)
+        .filter(models.PromptVersion.score != None)
+        .order_by(
+            models.PromptVersion.score.desc(), models.PromptVersion.created_at.desc()
+        )
+        .limit(limit)
+        .all()
+    )

@@ -16,11 +16,25 @@ class Prompt(Base):
     __tablename__ = "prompts"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, nullable=True)
+    user_id = Column(String, nullable=False)
 
     original_prompt = Column(Text)
-    enhanced_prompt = Column(Text)
     mode = Column(String)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PromptVersion(Base):
+    __tablename__ = "prompt_versions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    prompt_id = Column(Integer, ForeignKey("prompts.id"))
+
+    version_number = Column(Integer)
+    enhanced_prompt = Column(Text)
+
+    score = Column(Float, nullable=True)
+    is_best = Column(Boolean, default=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -57,5 +71,32 @@ class User(Base):
 
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, unique=True)
+
+    preferred_tone = Column(String, nullable=True)
+    preferred_structure = Column(String, nullable=True)
+    preferred_length = Column(String, nullable=True)
+
+    last_updated = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class UsageLog(Base):
+    __tablename__ = "usage_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String)
+
+    prompt_tokens = Column(Integer)
+    response_tokens = Column(Integer)
+
+    cached = Column(Boolean, default=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

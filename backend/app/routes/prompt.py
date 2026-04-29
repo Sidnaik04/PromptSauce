@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -7,23 +8,31 @@ from app.core.dependencies import get_current_user
 from app.db.database import get_db
 from app.services.db_service import (
     save_prompt,
-    save_evaluation,
     track_usage,
     check_usage_limit,
+    save_prompt_version,
+    mark_best_version,
 )
 from app.services.llm_service import LLMService
 from app.services.rate_limiter import is_rate_limited
+from app.services.pattern_service import extract_pattern, update_user_preferences
 from app.services.redis_cache import get_cached, set_cache
+from app.services.usage_service import estimate_tokens
+from app.db import models
 from app.schemas.prompt_schema import PromptRequest
 from app.graph.workflow import build_graph
+from app.agents.analyzer import AnalyzerAgent
+from app.agents.rewriter import RewriterAgent
 
 router = APIRouter()
 
 graph = build_graph()
+analyzer = AnalyzerAgent()
+rewriter = RewriterAgent()
 
 
 @router.post("/enhance")
-def enhance_prompt(
+async def enhance_prompt(
     request: PromptRequest,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
@@ -70,9 +79,22 @@ def enhance_prompt(
 
     if cached:
         logger.info(f"Cache hit for user: {user_id}")
+        # Log cached usage
+        prompt_tokens = estimate_tokens(data.get("prompt", ""))
+        response_tokens = estimate_tokens(cached.get("enhanced_prompt", ""))
+
+        log = models.UsageLog(
+            user_id=user_id,
+            prompt_tokens=prompt_tokens,
+            response_tokens=response_tokens,
+            cached=True,
+        )
+        db.add(log)
+        db.commit()
+
         return {**cached, "cached": True}
 
-    result = graph.invoke(
+    result = await graph.ainvoke(
         {
             "input": data,
             "debug": {},
@@ -92,32 +114,92 @@ def enhance_prompt(
     if not user_api_key:
         set_cache(cache_input, response_data)
 
+    # Log usage
+    prompt_tokens = estimate_tokens(data.get("prompt", ""))
+    response_tokens = estimate_tokens(result.get("enhanced_prompt", ""))
+
+    log = models.UsageLog(
+        user_id=user_id,
+        prompt_tokens=prompt_tokens,
+        response_tokens=response_tokens,
+        cached=False,
+    )
+    db.add(log)
+    db.commit()
+
     if mode == "free":
         track_usage(db, user_id)
 
-    prompt_record = save_prompt(
-        db,
-        {
-            **data,
-            "enhanced_prompt": result.get("enhanced_prompt"),
-            "metadata": {"user_id": user_id},
-        },
-    )
+    prompt_record = save_prompt(db, {**data, "metadata": {"user_id": user_id}})
+
+    version = save_prompt_version(db, prompt_record.id, result.get("enhanced_prompt"))
 
     if result.get("evaluation"):
-        save_evaluation(db, prompt_record.id, result["evaluation"])
+        scores = result["evaluation"]["scores"]["enhanced"]
+        avg_score = sum(scores.values()) / len(scores)
+
+        version.score = avg_score
+        db.commit()
+
+        mark_best_version(db, prompt_record.id, version.id)
+
+        if avg_score >= 8:  # only learn from good outputs
+            pattern = extract_pattern(result["enhanced_prompt"])
+            update_user_preferences(db, user_id, pattern)
 
     response = {
         "enhanced_prompt": result.get("enhanced_prompt"),
-        "analysis": result.get("analysis"),
+        "explanation": result.get("explanation"),
+        "insights": result.get("insights"),
         "evaluation": result.get("evaluation"),
-        "critic": result.get("critic"),
         "usage_mode": mode,
     }
+
+    # Normalize error responses
+    if "Error generating prompt" in result.get("enhanced_prompt", ""):
+        return {
+            "status": "error",
+            "error": "Unable to process request. Please try again.",
+        }
+
+    if not result.get("enhanced_prompt"):
+        return {
+            "status": "error",
+            "error": "LLM service unavailable. Try again later.",
+        }
+
+    response["rate_limit"] = {"current": count, "limit": 20}
 
     if settings.DEBUG:
         response["debug"] = result.get("debug")
 
-    response["rate_limit"] = {"current": count, "limit": 20}
+    return {
+        "status": "success",
+        "data": response,
+    }
 
-    return response
+
+@router.post("/enhance/stream")
+async def enhance_prompt_stream(
+    request: PromptRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    data = request.model_dump()
+    user_id = str(user.id)
+
+    llm = LLMService()
+
+    async def stream_generator():
+        try:
+            # Minimal pipeline: analyzer + rewriter
+            analysis, _ = analyzer.run(data, llm)
+
+            async for chunk in rewriter.astream(data, analysis, llm):
+                yield chunk
+
+        except Exception as e:
+            logger.error(f"Stream error: {str(e)}")
+            yield f"\nError generating response: {str(e)}"
+
+    return StreamingResponse(stream_generator(), media_type="text/plain")

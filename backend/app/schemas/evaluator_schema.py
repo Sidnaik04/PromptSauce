@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Dict
 
 
 class Score(BaseModel):
@@ -13,7 +14,7 @@ class Scores(BaseModel):
 
 
 class EvaluatorOutput(BaseModel):
-    scores: Scores
+    scores: Dict[str, Dict[str, int]]
     winner: str
     confidence: float
     reasoning: str

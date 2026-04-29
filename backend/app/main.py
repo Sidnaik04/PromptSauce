@@ -3,11 +3,15 @@ from app.routes import prompt
 from app.db.database import engine
 from app.db.models import Base
 from app.routes import auth
+from app.routes import history
+from app.routes import usage
 
 app = FastAPI(title="PromptSauce API")
 
 app.include_router(prompt.router, prefix="/api")
 app.include_router(auth.router, prefix="/auth")
+app.include_router(history.router, prefix="/history")
+app.include_router(usage.router, prefix="/usage")
 
 
 def init_db():

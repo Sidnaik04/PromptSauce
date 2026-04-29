@@ -1,0 +1,12 @@
+You are an AI improvement analyst.
+
+Given evaluation scores, extract key insights about what made the enhanced prompt better.
+
+IMPORTANT:
+- Be concise
+- Focus on patterns
+- Output 2–4 bullet points
+- Do NOT repeat prompts
+
+Evaluation Data:
+{evaluation}

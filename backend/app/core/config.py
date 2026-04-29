@@ -7,7 +7,8 @@ load_dotenv()
 class Settings:
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "gemini")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+    DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
+    ENV:str = os.getenv("ENV", "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your_secret_key")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")

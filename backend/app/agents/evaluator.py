@@ -3,14 +3,21 @@ from app.services.llm_service import LLMService
 from app.schemas.evaluator_schema import EvaluatorOutput
 from app.core.prompt_loader import load_prompt
 from app.services.json_repair import repair_json, clean_json_text
+from app.core.modes import get_eval_criteria
 
 
 class EvaluatorAgent:
     def __init__(self):
         self.prompt_template = load_prompt("app/core/prompts/evaluator_prompt.txt")
 
-    def run(self, original: str, enhanced: str, llm: LLMService):
-        prompt = self.prompt_template.format(original=original, enhanced=enhanced)
+    def run(self, original: str, enhanced: str, mode: str, llm: LLMService):
+        criteria = get_eval_criteria(mode)
+
+        criteria_text = "\n- " + "\n- ".join(criteria)
+
+        prompt = self.prompt_template.format(
+            original=original, enhanced=enhanced, criteria=criteria_text
+        )
 
         raw_output = llm.generate(prompt)
 
@@ -29,10 +36,12 @@ class EvaluatorAgent:
             except Exception as repair_error:
                 debug["repair_failed"] = str(repair_error)
 
+                fallback_scores = {c: 5 for c in criteria}
+
                 parsed = {
                     "scores": {
-                        "original": {"clarity": 5, "completeness": 5, "usefulness": 5},
-                        "enhanced": {"clarity": 5, "completeness": 5, "usefulness": 5},
+                        "original": fallback_scores,
+                        "enhanced": fallback_scores,
                     },
                     "winner": "original",
                     "confidence": 0.5,

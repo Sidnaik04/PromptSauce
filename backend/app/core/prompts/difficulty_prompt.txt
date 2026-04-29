@@ -1,0 +1,17 @@
+You are a classification agent.
+
+Classify the difficulty of the prompt into ONE of:
+
+- simple
+- medium
+- complex
+
+Rules:
+- simple: basic explanation, short tasks
+- medium: requires reasoning or structure
+- complex: multi-step, deep understanding, or advanced topics
+
+Return ONLY one word.
+
+Prompt:
+{prompt}

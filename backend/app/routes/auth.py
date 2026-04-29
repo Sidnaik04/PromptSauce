@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -13,7 +14,7 @@ from app.core.dependencies import get_current_user
 router = APIRouter()
 
 
-@router.post("/register", response_model=TokenResponse)
+@router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     new_user = create_user(db, user.email, user.password)
 
@@ -22,10 +23,14 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     token = create_access_token({"sub": new_user.email})
 
-    return {"access_token": token}
+    response = JSONResponse(content={"message": "Registration successful"})
+    response.set_cookie(
+        key="access_token", value=token, httponly=True, secure=True, samesite="lax"
+    )
+    return response
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = authenticate_user(db, user.email, user.password)
 
@@ -34,7 +39,11 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
     token = create_access_token({"sub": db_user.email})
 
-    return {"access_token": token}
+    response = JSONResponse(content={"message": "Login successful"})
+    response.set_cookie(
+        key="access_token", value=token, httponly=True, secure=True, samesite="lax"
+    )
+    return response
 
 
 @router.get("/me")
@@ -42,7 +51,7 @@ def get_me(user=Depends(get_current_user)):
     return {"email": user.email, "id": user.id}
 
 
-@router.post("/google", response_model=TokenResponse)
+@router.post("/google")
 def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     google_user = verify_google_token(data.token)
 
@@ -53,4 +62,8 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
 
     token = create_access_token({"sub": user.email})
 
-    return {"access_token": token}
+    response = JSONResponse(content={"message": "Google auth successful"})
+    response.set_cookie(
+        key="access_token", value=token, httponly=True, secure=True, samesite="lax"
+    )
+    return response
