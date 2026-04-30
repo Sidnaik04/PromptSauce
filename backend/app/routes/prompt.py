@@ -131,6 +131,7 @@ async def enhance_prompt(
         track_usage(db, user_id)
 
     prompt_record = save_prompt(db, {**data, "metadata": {"user_id": user_id}})
+    logger.info(f"Saved prompt {prompt_record.id} for user {user_id}")
 
     version = save_prompt_version(db, prompt_record.id, result.get("enhanced_prompt"))
 
@@ -188,18 +189,69 @@ async def enhance_prompt_stream(
     data = request.model_dump()
     user_id = str(user.id)
 
-    llm = LLMService()
+    # Check rate limits upfront
+    is_limited, count = is_rate_limited(user_id)
+    if is_limited:
+        raise HTTPException(
+            status_code=429, detail=f"Rate limit exceeded. Try again later."
+        )
+
+    # Check usage limits
+    metadata = data.get("metadata", {}) or {}
+    user_api_key = metadata.get("api_key")
+    allowed, mode = check_usage_limit(db, user_id, bool(user_api_key))
+
+    if not allowed:
+        raise HTTPException(
+            status_code=403,
+            detail="Free usage limit exceeded. Please provide your API key.",
+        )
+
+    llm = LLMService(api_key=user_api_key)
 
     async def stream_generator():
         try:
+            # Collect streamed chunks
+            enhanced_prompt_chunks = []
+
             # Minimal pipeline: analyzer + rewriter
             analysis, _ = analyzer.run(data, llm)
 
             async for chunk in rewriter.astream(data, analysis, llm):
+                enhanced_prompt_chunks.append(chunk)
                 yield chunk
+
+            # Combine all chunks
+            enhanced_prompt = "".join(enhanced_prompt_chunks)
+
+            # Save prompt after streaming completes
+            if enhanced_prompt and "Error" not in enhanced_prompt:
+                prompt_record = save_prompt(
+                    db, {**data, "metadata": {"user_id": user_id}}
+                )
+                logger.info(f"Saved prompt {prompt_record.id} for user {user_id}")
+
+                # Save version
+                version = save_prompt_version(db, prompt_record.id, enhanced_prompt)
+
+                # Track usage
+                prompt_tokens = estimate_tokens(data.get("prompt", ""))
+                response_tokens = estimate_tokens(enhanced_prompt)
+
+                log = models.UsageLog(
+                    user_id=user_id,
+                    prompt_tokens=prompt_tokens,
+                    response_tokens=response_tokens,
+                    cached=False,
+                )
+                db.add(log)
+                db.commit()
+
+                if mode == "free":
+                    track_usage(db, user_id)
 
         except Exception as e:
             logger.error(f"Stream error: {str(e)}")
-            yield f"\nError generating response: {str(e)}"
+            yield f"\n\nError generating response: {str(e)}"
 
     return StreamingResponse(stream_generator(), media_type="text/plain")

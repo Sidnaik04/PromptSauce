@@ -9,7 +9,11 @@ def verify_google_token(token: str):
             token, requests.Request(), settings.GOOGLE_CLIENT_ID
         )
 
-        return {"email": idinfo["email"], "name": idinfo.get("name")}
+        return {
+            "email": idinfo["email"],
+            "name": idinfo.get("name"),
+            "picture": idinfo.get("picture"),
+        }
 
     except Exception:
         return None

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.logger import logger
 from app.services.db_service import (
     get_user_prompts,
     get_prompt_versions,
@@ -15,17 +16,35 @@ router = APIRouter()
 
 @router.get("/prompts")
 def get_history(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    prompts = get_user_prompts(db, str(user.id))
+    user_id = str(user.id)
+    logger.info(f"Fetching history for user_id: {user_id}")
 
-    return [
-        {
-            "prompt_id": p.id,
-            "original_prompt": p.original_prompt,
-            "mode": p.mode,
-            "created_at": p.created_at,
-        }
-        for p in prompts
-    ]
+    prompts = get_user_prompts(db, user_id)
+    logger.info(f"Found {len(prompts)} prompts for user {user_id}")
+
+    result = []
+    for p in prompts:
+        best = get_best_version(db, p.id)
+        result.append(
+            {
+                "prompt_id": p.id,
+                "original_prompt": p.original_prompt,
+                "mode": p.mode,
+                "created_at": p.created_at,
+                "best_version": (
+                    {
+                        "enhanced_prompt": best.enhanced_prompt if best else "",
+                        "explanation": "",
+                        "insights": "",
+                        "score": best.score if best else 0,
+                    }
+                    if best
+                    else None
+                ),
+            }
+        )
+
+    return result
 
 
 @router.get("/prompts/{prompt_id}/versions")
@@ -59,6 +78,26 @@ def get_best(
         "enhanced_prompt": best.enhanced_prompt,
         "score": best.score,
     }
+
+
+@router.get("/debug/all-prompts")
+def debug_all_prompts(db: Session = Depends(get_db)):
+    """Debug endpoint - lists ALL prompts in database"""
+    from app.db import models
+
+    all_prompts = db.query(models.Prompt).all()
+    logger.info(f"Total prompts in DB: {len(all_prompts)}")
+
+    return [
+        {
+            "prompt_id": p.id,
+            "user_id": p.user_id,
+            "original_prompt": p.original_prompt,
+            "mode": p.mode,
+            "created_at": p.created_at,
+        }
+        for p in all_prompts
+    ]
 
 
 @router.get("/suggestions")
