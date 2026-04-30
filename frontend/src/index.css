@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 106, 61, 0.45) rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 106, 61, 0.55),
+    rgba(255, 106, 61, 0.25)
+  );
+  border-radius: 999px;
+  border: 2px solid rgba(30, 30, 30, 0.9);
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 106, 61, 0.75),
+    rgba(255, 106, 61, 0.4)
+  );
+}

@@ -27,8 +27,12 @@ const CopyButton = ({ text }) => {
 const Section = ({ label, content, isHighlight = false }) => {
   if (!content) return null;
   return (
-    <div className={`mt-3.5 ${isHighlight ? "bg-[#FF6A3D]/5 border border-[#FF6A3D]/20 rounded-lg p-3" : ""}`}>
-      <p className={`text-[10px] uppercase tracking-widest mb-2 font-semibold ${isHighlight ? "text-[#FF6A3D]" : "text-gray-500"}`}>
+    <div
+      className={`mt-3.5 ${isHighlight ? "bg-[#FF6A3D]/5 border border-[#FF6A3D]/20 rounded-lg p-3" : ""}`}
+    >
+      <p
+        className={`text-[10px] uppercase tracking-widest mb-2 font-semibold ${isHighlight ? "text-[#FF6A3D]" : "text-gray-500"}`}
+      >
         {label}
       </p>
       <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
@@ -56,11 +60,22 @@ export default function Message({ msg, advancedMode }) {
         <div className="max-w-2xl w-full bg-[#2A2A2A]/60 border border-[#FF6A3D]/40 rounded-2xl rounded-tl-sm px-5 py-4 backdrop-blur-sm shadow-lg shadow-[#FF6A3D]/10">
           <div className="flex items-start gap-2 mb-2">
             <div className="flex gap-1 mt-1">
-              <div className="w-1.5 h-1.5 bg-[#FF6A3D] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-              <div className="w-1.5 h-1.5 bg-[#FF6A3D] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-              <div className="w-1.5 h-1.5 bg-[#FF6A3D] rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              <div
+                className="w-1.5 h-1.5 bg-[#FF6A3D] rounded-full animate-bounce"
+                style={{ animationDelay: "0ms" }}
+              />
+              <div
+                className="w-1.5 h-1.5 bg-[#FF6A3D] rounded-full animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              />
+              <div
+                className="w-1.5 h-1.5 bg-[#FF6A3D] rounded-full animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              />
             </div>
-            <p className="text-xs text-[#FF6A3D] font-semibold">Generating...</p>
+            <p className="text-xs text-[#FF6A3D] font-semibold">
+              Generating...
+            </p>
           </div>
           <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed font-mono text-[#FF6A3D]/80">
             {msg.content}
@@ -79,8 +94,8 @@ export default function Message({ msg, advancedMode }) {
           {/* Enhanced Prompt - Highlighted */}
           <div className="bg-[#2A2A2A] border border-[#FF6A3D]/30 rounded-2xl rounded-tl-sm px-6 py-5">
             <p className="text-xs text-[#FF6A3D] uppercase tracking-widest mb-2.5 font-bold flex items-center gap-2">
-              <span className="w-2 h-2 bg-[#FF6A3D] rounded-full"></span>
-              ✦ Enhanced Prompt
+              <span className="w-2 h-2 bg-[#FF6A3D] rounded-full"></span>✦
+              Enhanced Prompt
             </p>
             <p className="text-sm text-white leading-relaxed whitespace-pre-wrap font-medium">
               {msg.enhanced_prompt}
@@ -91,7 +106,9 @@ export default function Message({ msg, advancedMode }) {
           {msg.evaluation && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="bg-[#2A2A2A] border border-white/10 rounded-xl px-4 py-4">
-                <p className="text-xs text-gray-500 uppercase tracking-widest mb-2 font-semibold">Original Score</p>
+                <p className="text-xs text-gray-500 uppercase tracking-widest mb-2 font-semibold">
+                  Original Score
+                </p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-3xl font-bold text-white">
                     {msg.evaluation?.original_score?.toFixed(1) ?? "—"}
@@ -100,7 +117,9 @@ export default function Message({ msg, advancedMode }) {
                 </div>
               </div>
               <div className="bg-[#2A2A2A] border border-[#FF6A3D]/30 rounded-xl px-4 py-4">
-                <p className="text-xs text-[#FF6A3D] uppercase tracking-widest mb-2 font-semibold">Enhanced Score</p>
+                <p className="text-xs text-[#FF6A3D] uppercase tracking-widest mb-2 font-semibold">
+                  Enhanced Score
+                </p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-3xl font-bold text-[#FF6A3D]">
                     {msg.evaluation?.enhanced_score?.toFixed(1) ?? "—"}
@@ -111,29 +130,28 @@ export default function Message({ msg, advancedMode }) {
             </div>
           )}
 
-          {/* Explanation and Insights Side by Side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Insights */}
+          {msg.insights && (
             <div className="bg-[#2A2A2A] border border-white/10 rounded-xl px-5 py-4">
-              <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 font-semibold">Why it works</p>
+              <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 font-semibold">
+                Key insights
+              </p>
               <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                {msg.explanation}
+                {msg.insights}
               </p>
             </div>
-            {msg.insights && (
-              <div className="bg-[#2A2A2A] border border-white/10 rounded-xl px-5 py-4">
-                <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 font-semibold">Key insights</p>
-                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {msg.insights}
-                </p>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Improvement Badge */}
           {msg.evaluation && (
             <div className="bg-[#FF6A3D]/10 border border-[#FF6A3D]/20 rounded-xl px-4 py-3">
               <p className="text-xs text-[#FF6A3D] font-semibold">
-                ⚡ {(msg.evaluation?.enhanced_score - msg.evaluation?.original_score).toFixed(1)} point improvement
+                ⚡{" "}
+                {(
+                  msg.evaluation?.enhanced_score -
+                  msg.evaluation?.original_score
+                ).toFixed(1)}{" "}
+                point improvement
               </p>
             </div>
           )}
@@ -157,8 +175,11 @@ export default function Message({ msg, advancedMode }) {
       ) : (
         // Normal mode: Simpler, cleaner layout
         <div className="max-w-2xl w-full bg-[#2A2A2A] border border-white/10 rounded-2xl rounded-tl-sm px-5 py-5">
-          <Section label="✦ Enhanced Prompt" content={msg.enhanced_prompt} isHighlight={true} />
-          <Section label="How it works" content={msg.explanation} />
+          <Section
+            label="✦ Enhanced Prompt"
+            content={msg.enhanced_prompt}
+            isHighlight={true}
+          />
 
           {/* Actions */}
           <div className="mt-4.5 pt-3.5 border-t border-white/5 flex flex-wrap gap-2">

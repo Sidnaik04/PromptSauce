@@ -8,6 +8,7 @@ const useStore = create((set) => ({
   history: [],
   isStreaming: false,
   isLoading: false,
+  limitReached: false,
 
   setUser: (user) => set({ user }),
   setToken: (token) => {
@@ -16,7 +17,14 @@ const useStore = create((set) => ({
   },
   logout: () => {
     localStorage.removeItem("token");
-    set({ user: null, token: null, chats: [], currentChat: [] });
+    set({
+      user: null,
+      token: null,
+      chats: [],
+      currentChat: [],
+      history: [],
+      limitReached: false,
+    });
   },
   addMessage: (msg) => set((s) => ({ currentChat: [...s.currentChat, msg] })),
   setCurrentChat: (chatOrUpdater) =>
@@ -29,6 +37,7 @@ const useStore = create((set) => ({
   setHistory: (history) => set({ history }),
   setStreaming: (val) => set({ isStreaming: val }),
   setLoading: (val) => set({ isLoading: val }),
+  setLimitReached: (val) => set({ limitReached: val }),
 }));
 
 export default useStore;

@@ -23,12 +23,14 @@ from app.schemas.prompt_schema import PromptRequest
 from app.graph.workflow import build_graph
 from app.agents.analyzer import AnalyzerAgent
 from app.agents.rewriter import RewriterAgent
+from app.agents.explainer import ExplainerAgent
 
 router = APIRouter()
 
 graph = build_graph()
 analyzer = AnalyzerAgent()
 rewriter = RewriterAgent()
+explainer = ExplainerAgent()
 
 
 @router.post("/enhance")
@@ -45,17 +47,27 @@ async def enhance_prompt(
     metadata = data.get("metadata", {}) or {}
     user_id = str(user.id)
 
-    is_limited, count = is_rate_limited(user_id)
-
-    if is_limited:
-        raise HTTPException(
-            status_code=429, detail=f"Rate limit exceeded. Try again later."
-        )
-
     user_api_key = metadata.get("api_key")
 
+    # If no API key in request, try to retrieve saved API key from database
+    if not user_api_key:
+        db_user = db.query(models.User).filter_by(id=user.id).first()
+        if db_user and db_user.api_key:
+            user_api_key = db_user.api_key
+            logger.info(f"Retrieved saved API key for user: {user_id}")
+        else:
+            logger.warning(f"No API key found for user: {user_id}")
+
+    count = 0
+    if not user_api_key:
+        is_limited, count = is_rate_limited(user_id)
+        if is_limited:
+            raise HTTPException(
+                status_code=429, detail=f"Rate limit exceeded. Try again later."
+            )
+
     allowed, mode = check_usage_limit(db, user_id, bool(user_api_key))
-    logger.info(f"User: {user_id}, Mode: {mode}")
+    logger.info(f"User: {user_id}, Mode: {mode}, Has API Key: {bool(user_api_key)}")
 
     if not allowed:
         raise HTTPException(
@@ -103,11 +115,16 @@ async def enhance_prompt(
         }
     )
 
+    logger.info(f"Graph result explanation: {result.get('explanation')}")
+    logger.info(f"Graph result insights: {result.get('insights')}")
+
     response_data = {
         "enhanced_prompt": result.get("enhanced_prompt"),
         "analysis": result.get("analysis"),
         "evaluation": result.get("evaluation"),
         "critic": result.get("critic"),
+        "explanation": result.get("explanation") or "Enhancement applied successfully.",
+        "insights": result.get("insights"),
         "usage_mode": mode,
     }
 
@@ -150,7 +167,7 @@ async def enhance_prompt(
 
     response = {
         "enhanced_prompt": result.get("enhanced_prompt"),
-        "explanation": result.get("explanation"),
+        "explanation": result.get("explanation") or "Enhancement applied successfully.",
         "insights": result.get("insights"),
         "evaluation": result.get("evaluation"),
         "usage_mode": mode,
@@ -169,7 +186,7 @@ async def enhance_prompt(
             "error": "LLM service unavailable. Try again later.",
         }
 
-    response["rate_limit"] = {"current": count, "limit": 20}
+    response["rate_limit"] = {"current": count, "limit": 3}
 
     if settings.DEBUG:
         response["debug"] = result.get("debug")
@@ -189,17 +206,28 @@ async def enhance_prompt_stream(
     data = request.model_dump()
     user_id = str(user.id)
 
-    # Check rate limits upfront
-    is_limited, count = is_rate_limited(user_id)
-    if is_limited:
-        raise HTTPException(
-            status_code=429, detail=f"Rate limit exceeded. Try again later."
-        )
-
     # Check usage limits
     metadata = data.get("metadata", {}) or {}
     user_api_key = metadata.get("api_key")
+
+    # If no API key in request, try to retrieve saved API key from database
+    if not user_api_key:
+        db_user = db.query(models.User).filter_by(id=user.id).first()
+        if db_user and db_user.api_key:
+            user_api_key = db_user.api_key
+            logger.info(f"Retrieved saved API key for user: {user_id}")
+        else:
+            logger.warning(f"No API key found for user: {user_id}")
+
+    if not user_api_key:
+        is_limited, _ = is_rate_limited(user_id)
+        if is_limited:
+            raise HTTPException(
+                status_code=429, detail=f"Rate limit exceeded. Try again later."
+            )
+
     allowed, mode = check_usage_limit(db, user_id, bool(user_api_key))
+    logger.info(f"User: {user_id}, Mode: {mode}, Has API Key: {bool(user_api_key)}")
 
     if not allowed:
         raise HTTPException(

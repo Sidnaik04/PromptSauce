@@ -32,3 +32,7 @@ class GoogleAuthRequest(BaseModel):
 
 class EmailVerificationRequest(BaseModel):
     verify_token: str
+
+
+class ApiKeyRequest(BaseModel):
+    api_key: str

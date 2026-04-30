@@ -58,6 +58,12 @@ export const getSuggestions = () =>
     (r) => r.json(),
   );
 
+export const deletePrompt = (promptId) =>
+  fetch(`${BASE_URL}/history/prompts/${promptId}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  }).then((r) => r.json());
+
 export const streamEnhance = async (payload, onChunk, onDone) => {
   const token = localStorage.getItem("token");
   const res = await fetch(`${BASE_URL}/api/enhance/stream`, {
@@ -69,8 +75,22 @@ export const streamEnhance = async (payload, onChunk, onDone) => {
     body: JSON.stringify(payload),
   });
 
+  if (!res.ok) {
+    let detail = "Request failed";
+    try {
+      const data = await res.json();
+      detail = data.detail || data.error || detail;
+    } catch {
+      // ignore parsing error
+    }
+    const error = new Error(detail);
+    error.status = res.status;
+    throw error;
+  }
+
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
+  let fullText = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -78,6 +98,8 @@ export const streamEnhance = async (payload, onChunk, onDone) => {
       onDone();
       break;
     }
-    onChunk(decoder.decode(value));
+    const chunk = decoder.decode(value);
+    fullText += chunk;
+    onChunk(chunk);
   }
 };

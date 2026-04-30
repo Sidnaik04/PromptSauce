@@ -18,6 +18,8 @@ export default function ApiKey() {
     localStorage.getItem("user_api_key") || "",
   );
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [usage, setUsage] = useState(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
   const navigate = useNavigate();
@@ -29,10 +31,37 @@ export default function ApiKey() {
       .finally(() => setLoadingUsage(false));
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem("user_api_key", apiKey);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    if (!apiKey.trim()) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:8000/auth/save-api-key", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ api_key: apiKey }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to save API key");
+      }
+
+      localStorage.setItem("user_api_key", apiKey);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error saving API key:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,27 +85,31 @@ export default function ApiKey() {
           </h2>
           <p className="text-xs text-gray-500 mb-4">
             Used when your free tier limit is exceeded. Get yours from the
-            Anthropic console.
+            Gemini API console.
           </p>
           <div className="flex gap-2">
             <input
               type="password"
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-ant-..."
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                setError(null);
+              }}
+              placeholder="AIza..."
               className="flex-1 bg-[#1E1E1E] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#FF6A3D] transition"
             />
             <button
               onClick={handleSave}
-              disabled={!apiKey.trim()}
+              disabled={!apiKey.trim() || loading}
               className="px-5 py-2.5 bg-[#FF6A3D] hover:bg-orange-500 disabled:opacity-40 rounded-lg text-sm font-medium transition"
             >
-              {saved ? "✓ Saved" : "Save"}
+              {loading ? "Saving..." : saved ? "✓ Saved" : "Save"}
             </button>
           </div>
+          {error && <p className="text-xs text-red-400 mt-2">✗ {error}</p>}
           {saved && (
             <p className="text-xs text-green-400 mt-2">
-              API key saved locally.
+              ✓ API key saved successfully to your account.
             </p>
           )}
         </div>
@@ -123,14 +156,14 @@ export default function ApiKey() {
           {usage && (
             <div className="mt-4 pt-4 border-t border-white/5">
               <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Rate limit</span>
-                <span>{usage.total_requests ?? 0} / 20 per min</span>
+                <span>Free limit</span>
+                <span>{Math.min(usage.total_requests ?? 0, 3)} / 3</span>
               </div>
               <div className="w-full h-1.5 bg-[#1E1E1E] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#FF6A3D] rounded-full transition-all"
                   style={{
-                    width: `${Math.min((usage.total_requests / 20) * 100, 100)}%`,
+                    width: `${Math.min(((usage.total_requests ?? 0) / 3) * 100, 100)}%`,
                   }}
                 />
               </div>

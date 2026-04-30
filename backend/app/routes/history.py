@@ -9,6 +9,8 @@ from app.services.db_service import (
     get_prompt_versions,
     get_best_version,
     get_top_prompts,
+    delete_prompt,
+    get_latest_version,
 )
 
 router = APIRouter()
@@ -25,6 +27,8 @@ def get_history(db: Session = Depends(get_db), user=Depends(get_current_user)):
     result = []
     for p in prompts:
         best = get_best_version(db, p.id)
+        latest = get_latest_version(db, p.id) if not best else None
+        version = best or latest
         result.append(
             {
                 "prompt_id": p.id,
@@ -33,18 +37,29 @@ def get_history(db: Session = Depends(get_db), user=Depends(get_current_user)):
                 "created_at": p.created_at,
                 "best_version": (
                     {
-                        "enhanced_prompt": best.enhanced_prompt if best else "",
+                        "enhanced_prompt": version.enhanced_prompt if version else "",
                         "explanation": "",
                         "insights": "",
-                        "score": best.score if best else 0,
+                        "score": version.score if version else 0,
                     }
-                    if best
+                    if version
                     else None
                 ),
             }
         )
 
     return result
+
+
+@router.delete("/prompts/{prompt_id}")
+def delete_history_item(
+    prompt_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)
+):
+    user_id = str(user.id)
+    removed = delete_prompt(db, prompt_id, user_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    return {"status": "deleted"}
 
 
 @router.get("/prompts/{prompt_id}/versions")

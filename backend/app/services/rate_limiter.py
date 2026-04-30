@@ -1,7 +1,7 @@
 import time
 from app.services.redis_client import redis_client
 
-REQUEST_LIMIT = 20
+REQUEST_LIMIT = 3
 WINDOW_SIZE = 60  # seconds
 
 

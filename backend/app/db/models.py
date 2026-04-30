@@ -73,6 +73,7 @@ class User(Base):
 
     google_id = Column(String, unique=True, index=True, nullable=True)
     email_verification_token = Column(String, nullable=True)
+    api_key = Column(String, nullable=True)
 
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)

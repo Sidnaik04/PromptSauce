@@ -9,6 +9,7 @@ from app.schemas.auth_schema import (
     TokenResponse,
     GoogleAuthRequest,
     EmailVerificationRequest,
+    ApiKeyRequest,
 )
 from app.services.google_auth import verify_google_token
 from app.services.auth_service import (
@@ -183,3 +184,30 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
         key="access_token", value=token, httponly=True, secure=True, samesite="lax"
     )
     return response
+
+
+@router.post("/save-api-key")
+def save_api_key(
+    payload: ApiKeyRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Save or update user's API key"""
+    from app.db import models
+    from app.core.logger import logger
+
+    db_user = db.query(models.User).filter_by(id=user.id).first()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not payload.api_key or not payload.api_key.strip():
+        raise HTTPException(status_code=400, detail="API key cannot be empty")
+
+    db_user.api_key = payload.api_key.strip()
+    db.commit()
+    db.refresh(db_user)
+
+    logger.info(f"API key saved for user: {user.id}")
+
+    return {"message": "API key saved successfully", "user_id": user.id}

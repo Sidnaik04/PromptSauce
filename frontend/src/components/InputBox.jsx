@@ -35,6 +35,7 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
     currentChat,
     setCurrentChat,
     setHistory,
+    setLimitReached,
   } = useStore();
   const textareaRef = useRef(null);
 
@@ -65,6 +66,9 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
         tone: tone !== "default" ? tone : undefined,
         output_format: format !== "default" ? format : undefined,
       },
+      metadata: {
+        api_key: localStorage.getItem("user_api_key"),
+      },
     };
 
     if (useStream) {
@@ -89,6 +93,7 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
         },
         () => {
           setStreaming(false);
+          setLimitReached(false);
           setCurrentChat((prev) => {
             if (!prev) return prev;
             const updated = [...prev];
@@ -102,27 +107,65 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
           });
           refreshHistory();
         },
-      );
+      ).catch((err) => {
+        setStreaming(false);
+        const message =
+          err?.status === 403
+            ? "Free limit reached. Add your API key to continue generating prompts."
+            : err?.message || "Error: could not reach backend.";
+
+        if (err?.status === 403) {
+          setLimitReached(true);
+        }
+
+        setCurrentChat((prev) => {
+          if (!prev) return prev;
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            enhanced_prompt: message,
+            explanation: "",
+            insights: "",
+          };
+          return updated;
+        });
+      });
     } else {
       setLoading(true);
       try {
         const res = await enhance(payload);
         const d = res.data || res;
+        if (res.detail) {
+          throw new Error(res.detail);
+        }
         addMessage({
           role: "assistant",
           enhanced_prompt: d.enhanced_prompt,
-          explanation: d.explanation,
+          explanation: "",
           insights: d.insights,
           evaluation: d.evaluation,
         });
+        setLimitReached(false);
         refreshHistory();
-      } catch {
-        addMessage({
-          role: "assistant",
-          enhanced_prompt: "Error: could not reach backend.",
-          explanation: "",
-          insights: "",
-        });
+      } catch (err) {
+        const message = err?.message || "Error: could not reach backend.";
+        if (message.includes("Free usage limit exceeded")) {
+          setLimitReached(true);
+          addMessage({
+            role: "assistant",
+            enhanced_prompt:
+              "Free limit reached. Add your API key to continue generating prompts.",
+            explanation: "",
+            insights: "",
+          });
+        } else {
+          addMessage({
+            role: "assistant",
+            enhanced_prompt: message,
+            explanation: "",
+            insights: "",
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -132,7 +175,9 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
   const handleKey = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (prompt.trim() && !isStreaming && !isLoading) {
+        handleSend();
+      }
     }
   };
 
@@ -242,8 +287,9 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
           <button
             onClick={handleSend}
             disabled={!prompt.trim() || isStreaming || isLoading}
-            className="shrink-0 w-9 h-9 flex items-center justify-center bg-[#FF6A3D] hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition duration-150 hover:shadow-lg hover:shadow-[#FF6A3D]/30"
+            className="shrink-0 w-9 h-9 flex items-center justify-center bg-[#FF6A3D] hover:bg-orange-500 active:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition duration-150 hover:shadow-lg hover:shadow-[#FF6A3D]/30"
             title="Send (Enter)"
+            type="button"
           >
             <svg
               width="16"

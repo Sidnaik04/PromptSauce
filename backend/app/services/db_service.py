@@ -124,6 +124,15 @@ def get_best_version(db: Session, prompt_id: int):
     )
 
 
+def get_latest_version(db: Session, prompt_id: int):
+    return (
+        db.query(models.PromptVersion)
+        .filter_by(prompt_id=prompt_id)
+        .order_by(models.PromptVersion.version_number.desc())
+        .first()
+    )
+
+
 def get_top_prompts(db, user_id: str, limit: int = 5):
     return (
         db.query(models.PromptVersion, models.Prompt)
@@ -136,3 +145,19 @@ def get_top_prompts(db, user_id: str, limit: int = 5):
         .limit(limit)
         .all()
     )
+
+
+def delete_prompt(db: Session, prompt_id: int, user_id: str) -> bool:
+    prompt = db.query(models.Prompt).filter_by(id=prompt_id, user_id=user_id).first()
+    if not prompt:
+        return False
+
+    db.query(models.PromptVersion).filter_by(prompt_id=prompt_id).delete(
+        synchronize_session=False
+    )
+    db.query(models.Evaluation).filter_by(prompt_id=prompt_id).delete(
+        synchronize_session=False
+    )
+    db.delete(prompt)
+    db.commit()
+    return True

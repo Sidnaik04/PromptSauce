@@ -1,64 +1,38 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useStore from "../store/useStore";
-import { getHistory, getUsage } from "../services/api";
-
-const groupByTime = (items) => {
-  const now = new Date();
-  const today = [],
-    yesterday = [],
-    older = [];
-
-  items.forEach((item) => {
-    const d = new Date(item.created_at || Date.now());
-    const diff = (now - d) / (1000 * 60 * 60 * 24);
-    if (diff < 1) today.push(item);
-    else if (diff < 2) yesterday.push(item);
-    else older.push(item);
-  });
-
-  return { today, yesterday, older };
-};
-
-const ModeTag = ({ mode }) => (
-  <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#FF6A3D]/8 text-[#FF6A3D] border border-[#FF6A3D]/15 font-medium">
-    {mode}
-  </span>
-);
-
-const HistoryGroup = ({ label, items, onSelect }) => {
-  if (!items.length) return null;
-  return (
-    <div className="mb-5">
-      <p className="text-[11px] text-gray-600 px-3 mb-2 uppercase tracking-widest font-medium">
-        {label}
-      </p>
-      <div className="space-y-1">
-        {items.map((item) => (
-          <button
-            key={item.prompt_id}
-            onClick={() => onSelect(item)}
-            className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/8 transition-all duration-150 group"
-          >
-            <p className="text-sm text-gray-400 truncate group-hover:text-gray-200 leading-tight">
-              {item.original_prompt}
-            </p>
-            {item.mode && <ModeTag mode={item.mode} />}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
+import { deletePrompt, getHistory } from "../services/api";
 
 export default function Sidebar() {
-  const { history, setHistory, setCurrentChat, logout, token, user } =
+  const { history, setHistory, setCurrentChat, logout, user, token } =
     useStore();
   const navigate = useNavigate();
 
+  const modeLabel = (mode) => {
+    if (!mode) return "General";
+    return mode.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  };
+
+  const preferredOrder = [
+    "programming",
+    "writing",
+    "study",
+    "business",
+    "email",
+    "interview",
+    "fitness",
+    "legal",
+    "advice",
+    "psychology",
+    "data_analysis",
+    "auto",
+  ];
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      setHistory([]);
+      return;
+    }
 
     getHistory()
       .then((res) => {
@@ -66,8 +40,11 @@ export default function Sidebar() {
         console.log("History fetched:", historyData);
         setHistory(historyData);
       })
-      .catch((err) => console.error("Failed to fetch history:", err));
-  }, [setHistory]);
+      .catch((err) => {
+        console.error("Failed to fetch history:", err);
+        setHistory([]);
+      });
+  }, [setHistory, token]);
 
   const handleSelect = (item) => {
     setCurrentChat([
@@ -81,12 +58,55 @@ export default function Sidebar() {
     ]);
   };
 
+  const handleDelete = async (event, item) => {
+    event.stopPropagation();
+    const id = item.prompt_id || item.id;
+    if (!id) return;
+
+    try {
+      await deletePrompt(id);
+      setHistory(history.filter((p) => (p.prompt_id || p.id) !== id));
+      setCurrentChat((prev) => {
+        if (prev?.[0]?.content === item.original_prompt) {
+          return [];
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error("Failed to delete prompt:", err);
+    }
+  };
+
+  const getPromptPreview = (text, maxLength = 64) => {
+    if (!text) return "Untitled prompt";
+    const trimmed = text.replace(/\s+/g, " ").trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return `${trimmed.slice(0, maxLength - 1)}…`;
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
-  const { today, yesterday, older } = groupByTime(history);
+  const groupedHistory = history
+    .slice()
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .reduce((acc, item) => {
+      const key = item.mode || "general";
+      acc[key] = acc[key] || [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+
+  const orderedGroups = Object.keys(groupedHistory).sort((a, b) => {
+    const aIndex = preferredOrder.indexOf(a);
+    const bIndex = preferredOrder.indexOf(b);
+    const aRank = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+    const bRank = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+    if (aRank !== bRank) return aRank - bRank;
+    return modeLabel(a).localeCompare(modeLabel(b));
+  });
 
   return (
     <div className="w-64 bg-[#2A2A2A] flex flex-col border-r border-white/5 shrink-0">
@@ -126,7 +146,7 @@ export default function Sidebar() {
       </div>
 
       {/* History */}
-      <div className="flex-1 overflow-y-auto py-4 px-2">
+      <div className="flex-1 overflow-y-auto py-4 px-3 sidebar-scrollbar">
         {history.length === 0 ? (
           <div className="text-center mt-12">
             <p className="text-xs text-gray-600">No history yet</p>
@@ -135,15 +155,57 @@ export default function Sidebar() {
             </p>
           </div>
         ) : (
-          <>
-            <HistoryGroup label="Today" items={today} onSelect={handleSelect} />
-            <HistoryGroup
-              label="Yesterday"
-              items={yesterday}
-              onSelect={handleSelect}
-            />
-            <HistoryGroup label="Older" items={older} onSelect={handleSelect} />
-          </>
+          <div className="space-y-4">
+            {orderedGroups.map((group) => (
+              <div
+                key={group}
+                className="rounded-xl border border-white/5 bg-white/5 p-2"
+              >
+                <div className="flex items-center justify-between px-2 py-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
+                      {modeLabel(group)}
+                    </span>
+                    <span className="text-[10px] text-gray-600">
+                      {groupedHistory[group].length}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-gray-600">▾</span>
+                </div>
+                <div className="mt-1 space-y-1.5">
+                  {groupedHistory[group].map((item) => (
+                    <div
+                      key={item.prompt_id || item.id}
+                      className="group flex w-full items-start gap-2 rounded-lg px-2 py-2 hover:bg-white/5 transition-all duration-150"
+                    >
+                      <button
+                        onClick={() => handleSelect(item)}
+                        className="flex flex-1 items-start gap-2 text-left min-w-0"
+                        title={item.original_prompt}
+                        type="button"
+                      >
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FF6A3D]/70 group-hover:bg-[#FF6A3D]"></span>
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-gray-400 group-hover:text-gray-200 leading-snug">
+                            {getPromptPreview(item.original_prompt)}
+                          </p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={(event) => handleDelete(event, item)}
+                        className="text-[11px] text-gray-500 hover:text-[#FF6A3D] opacity-0 group-hover:opacity-100 transition"
+                        aria-label="Delete prompt"
+                        title="Delete prompt"
+                        type="button"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -151,7 +213,7 @@ export default function Sidebar() {
       <div className="p-4 border-t border-white/5 flex flex-col gap-2.5">
         <div className="flex items-center justify-between text-xs text-gray-500 px-1">
           <span className="font-medium">Free Tier</span>
-          <span className="text-[#FF6A3D] font-semibold">20/min</span>
+          <span className="text-[#FF6A3D] font-semibold">3 total</span>
         </div>
         <button
           onClick={() => navigate("/api-key")}
