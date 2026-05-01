@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useStore from "../store/useStore";
-import { deletePrompt, getHistory } from "../services/api";
+import { deletePrompt, getHistory, getUsage } from "../services/api";
+import { useState } from "react";
 
 export default function Sidebar() {
   const { history, setHistory, setCurrentChat, logout, user, token } =
@@ -28,6 +29,8 @@ export default function Sidebar() {
     "auto",
   ];
 
+  const [usage, setUsage] = useState(null);
+
   useEffect(() => {
     if (!token) {
       setHistory([]);
@@ -45,6 +48,13 @@ export default function Sidebar() {
         setHistory([]);
       });
   }, [setHistory, token]);
+
+  useEffect(() => {
+    if (!token) return;
+    getUsage()
+      .then((res) => setUsage(res.data || res))
+      .catch(() => {});
+  }, [token, history]);
 
   const handleSelect = (item) => {
     setCurrentChat([
@@ -121,7 +131,8 @@ export default function Sidebar() {
               <img
                 src={user.profile_picture}
                 alt="Profile"
-                className="w-8 h-8 rounded-full"
+                className="w-8 h-8 rounded-full object-cover object-center bg-[#1E1E1E]"
+                referrerPolicy="no-referrer"
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-[#FF6A3D]/20 flex items-center justify-center text-sm font-bold text-[#FF6A3D]">
@@ -211,10 +222,27 @@ export default function Sidebar() {
 
       {/* Bottom */}
       <div className="p-4 border-t border-white/5 flex flex-col gap-2.5">
-        <div className="flex items-center justify-between text-xs text-gray-500 px-1">
-          <span className="font-medium">Free Tier</span>
-          <span className="text-[#FF6A3D] font-semibold">3 total</span>
-        </div>
+        {(() => {
+          const rawKey = localStorage.getItem("user_api_key");
+          const hasApiKey = Boolean(rawKey && rawKey.trim() !== "" && rawKey !== "null" && rawKey !== "undefined");
+          
+          if (hasApiKey) {
+            return (
+              <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+                <span className="font-medium text-[#FF6A3D]">Premium User</span>
+                <span className="font-semibold text-green-400">Unlimited</span>
+              </div>
+            );
+          }
+          return (
+            <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+              <span className="font-medium">Free Tier</span>
+              <span className="text-[#FF6A3D] font-semibold">
+                {Math.max(0, 3 - (usage?.total_requests || 0))} left
+              </span>
+            </div>
+          );
+        })()}
         <button
           onClick={() => navigate("/api-key")}
           className="w-full py-2.5 text-sm text-gray-400 hover:text-white bg-white/5 hover:bg-white/8 rounded-xl transition duration-150 font-medium"
