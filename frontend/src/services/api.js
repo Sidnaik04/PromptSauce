@@ -36,6 +36,11 @@ export const googleAuth = (token) =>
     body: JSON.stringify({ token }),
   }).then((r) => r.json());
 
+export const getApiKey = () =>
+  fetch(`${BASE_URL}/auth/api-key`, { headers: getHeaders() }).then((r) =>
+    r.json(),
+  );
+
 export const enhance = (payload) =>
   fetch(`${BASE_URL}/api/enhance`, {
     method: "POST",

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { login, signup, googleAuth, verifyEmail } from "../services/api";
 import useStore from "../store/useStore";
+import { PromptsauceIcon } from "../components/PromptsauceIcon";
 
 export default function Auth() {
   const [tab, setTab] = useState("login");
@@ -25,10 +26,24 @@ export default function Auth() {
     }
     setLoading(true);
     try {
-      const res =
-        tab === "login"
-          ? await login(email, password)
-          : await signup(email, password, username);
+      const endpoint = tab === "login" ? "login" : "signup";
+      const payload =
+        tab === "login" ? { email, password } : { email, password, username };
+
+      const response = await fetch(`http://localhost:8000/auth/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const res = await response.json();
+
+      if (!response.ok) {
+        // API returned an error response
+        console.error(`${endpoint} error:`, res);
+        setError(res.detail || `${endpoint} failed. Please try again.`);
+        return;
+      }
 
       if (tab === "signup" && res.verify_token) {
         // Show verification screen
@@ -37,12 +52,15 @@ export default function Auth() {
       } else if (res.access_token) {
         setToken(res.access_token);
         setUser(res.user || { email, username });
+        localStorage.setItem("token", res.access_token);
         navigate("/dashboard");
       } else {
-        setError(res.detail || "Something went wrong");
+        console.warn("Unexpected response:", res);
+        setError(res.detail || "Something went wrong. Please try again.");
       }
     } catch (err) {
-      setError("Network error");
+      console.error("Auth error:", err);
+      setError(err.message || "Network error. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -52,18 +70,34 @@ export default function Auth() {
     setError("");
     setLoading(true);
     try {
-      const res = await verifyEmail(verifyToken);
+      const response = await fetch("http://localhost:8000/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verify_token: verifyToken }),
+      });
+
+      const res = await response.json();
+
+      if (!response.ok) {
+        console.error("Verify email error:", res);
+        setError(res.detail || "Verification failed. Token may have expired.");
+        return;
+      }
+
       if (res.access_token) {
         setToken(res.access_token);
         setUser(res.user);
+        localStorage.setItem("token", res.access_token);
         setVerifyToken(null);
         setPendingUser(null);
         navigate("/dashboard");
       } else {
-        setError(res.detail || "Verification failed");
+        console.warn("Unexpected verification response:", res);
+        setError("Verification completed but token not received.");
       }
     } catch (err) {
-      setError("Verification error");
+      console.error("Verify email error:", err);
+      setError(err.message || "Verification error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -73,7 +107,20 @@ export default function Auth() {
     setError("");
     setLoading(true);
     try {
-      const res = await googleAuth(credentialResponse.credential);
+      const response = await fetch("http://localhost:8000/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: credentialResponse.credential }),
+      });
+
+      const res = await response.json();
+
+      if (!response.ok) {
+        console.error("Google auth error:", res);
+        setError(res.detail || "Google authentication failed.");
+        return;
+      }
+
       if (res.access_token) {
         setToken(res.access_token);
         const userData = res.user || {
@@ -81,12 +128,15 @@ export default function Auth() {
           username: "GoogleUser",
         };
         setUser(userData);
+        localStorage.setItem("token", res.access_token);
         navigate("/dashboard");
       } else {
-        setError(res.detail || "Google authentication failed");
+        console.warn("Unexpected Google response:", res);
+        setError("Google authentication failed. Please try again.");
       }
-    } catch {
-      setError("Google authentication error");
+    } catch (err) {
+      console.error("Google auth error:", err);
+      setError(err.message || "Google authentication error.");
     } finally {
       setLoading(false);
     }
@@ -175,7 +225,10 @@ export default function Auth() {
             {/* Header */}
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">
-                ✦ PromptSauce
+                <span className="flex items-center justify-center gap-2">
+                  <PromptsauceIcon />
+                  PromptSauce
+                </span>
               </h1>
               <p className="text-sm text-gray-400">
                 {tab === "login" ? "Welcome back" : "Join PromptSauce"}
@@ -265,14 +318,24 @@ export default function Auth() {
 
             {/* Google Auth */}
             <div className="flex flex-col gap-3 items-center">
-              <div className="w-full">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  theme="dark"
-                  size="large"
-                  text={tab === "login" ? "signin_with" : "signup_with"}
-                />
+              <div
+                className="w-full p-1 rounded-lg"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(255, 106, 61, 0.2), rgba(255, 106, 61, 0.1))",
+                  boxShadow:
+                    "0 0 20px rgba(255, 106, 61, 0.15), inset 0 0 20px rgba(255, 106, 61, 0.05)",
+                }}
+              >
+                <div className="w-full bg-[#1E1E1E] rounded-lg p-4">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    theme="dark"
+                    size="large"
+                    text={tab === "login" ? "signin_with" : "signup_with"}
+                  />
+                </div>
               </div>
             </div>
           </>

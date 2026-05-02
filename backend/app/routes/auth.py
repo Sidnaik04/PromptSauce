@@ -153,6 +153,11 @@ def get_me(user=Depends(get_current_user)):
     }
 
 
+@router.get("/api-key")
+def get_api_key(user=Depends(get_current_user)):
+    return {"api_key": user.api_key or ""}
+
+
 @router.post("/google")
 def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     google_user = verify_google_token(data.token)

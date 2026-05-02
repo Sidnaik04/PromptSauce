@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getUsage } from "../services/api";
+import { getApiKey, getUsage } from "../services/api";
+import {
+  getStoredApiKey,
+  notifyApiKeyChanged,
+  notifyUsageRefresh,
+  setStoredApiKey,
+} from "../utils/appEvents";
+import useStore from "../store/useStore";
 
 const StatCard = ({ label, value, accent }) => (
   <div className="bg-[#1E1E1E] rounded-xl p-4 border border-white/5">
@@ -14,9 +21,9 @@ const StatCard = ({ label, value, accent }) => (
 );
 
 export default function ApiKey() {
-  const [apiKey, setApiKey] = useState(
-    localStorage.getItem("user_api_key") || "",
-  );
+  const user = useStore((s) => s.user);
+  const token = useStore((s) => s.token);
+  const [apiKey, setApiKey] = useState("");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,11 +32,30 @@ export default function ApiKey() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const cachedKey = getStoredApiKey(user, token);
+
+    if (cachedKey) {
+      setApiKey(cachedKey);
+    }
+
+    getApiKey()
+      .then((res) => {
+        const nextKey = res.data?.api_key ?? res.api_key ?? "";
+        setApiKey(nextKey);
+        if (nextKey) {
+          setStoredApiKey(nextKey, user, token);
+          notifyApiKeyChanged();
+        }
+      })
+      .catch(() => {});
+  }, [token, user]);
+
+  useEffect(() => {
     getUsage()
       .then((res) => setUsage(res.data || res))
       .catch(() => {})
       .finally(() => setLoadingUsage(false));
-  }, []);
+  }, [token]);
 
   const handleSave = async () => {
     if (!apiKey.trim()) return;
@@ -53,7 +79,9 @@ export default function ApiKey() {
         throw new Error(errorData.detail || "Failed to save API key");
       }
 
-      localStorage.setItem("user_api_key", apiKey);
+      setStoredApiKey(apiKey, user, token);
+      notifyApiKeyChanged();
+      notifyUsageRefresh();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import useStore from "../store/useStore";
 import Message from "./Message";
+import { PromptsauceIcon } from "./PromptsauceIcon";
 
 export default function ChatWindow({ advancedMode }) {
   const currentChat = useStore((s) => s.currentChat);
@@ -14,14 +15,16 @@ export default function ChatWindow({ advancedMode }) {
   if (currentChat.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center px-6 overflow-y-auto">
-        <div className="text-6xl mb-6 opacity-80">✦</div>
+        <div className="mb-6 opacity-80 flex justify-center">
+          <PromptsauceIcon width="84" height="84" />
+        </div>
         {user && (
           <p className="text-sm text-gray-400 mb-4">
             Welcome back,{" "}
             <span className="text-[#FF6A3D] font-semibold">
               {user.username || user.email}
             </span>
-            ! 👋
+            !
           </p>
         )}
         <h2 className="text-2xl font-bold text-white mb-3">
