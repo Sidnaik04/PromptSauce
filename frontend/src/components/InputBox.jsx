@@ -234,23 +234,24 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
 
   return (
     <div
-      className={`px-4 pb-4 pt-3 border-t transition-all duration-300 ${advancedMode ? "bg-[#1E1E1E] border-[#FF6A3D]/20" : "bg-[#1E1E1E] border-white/5"}`}
+      className={`px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3 border-t transition-all duration-300 ${advancedMode ? "bg-[#1E1E1E] border-[#FF6A3D]/20" : "bg-[#1E1E1E] border-white/5"}`}
     >
       <div className="max-w-3xl mx-auto">
         {/* Mode Badge */}
         {advancedMode && (
           <div className="mb-2.5 flex items-center gap-2">
             <div className="flex-1 h-px bg-linear-to-r from-[#FF6A3D]/0 via-[#FF6A3D]/20 to-[#FF6A3D]/0"></div>
-            <span className="text-xs font-semibold text-[#FF6A3D] bg-[#FF6A3D]/10 px-3 py-1 rounded-full border border-[#FF6A3D]/20 flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-[#FF6A3D] bg-[#FF6A3D]/10 px-2.5 sm:px-3 py-1 rounded-full border border-[#FF6A3D]/20 flex items-center gap-1.5">
               <AdvancedIcon />
-              Advanced Analysis Mode
+              <span className="hidden sm:inline">Advanced Analysis Mode</span>
+              <span className="sm:hidden">Advanced ON</span>
             </span>
             <div className="flex-1 h-px bg-linear-to-r from-[#FF6A3D]/0 via-[#FF6A3D]/20 to-[#FF6A3D]/0"></div>
           </div>
         )}
 
         {/* Controls */}
-        <div className="flex flex-wrap items-center gap-2 mb-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value)}
@@ -295,7 +296,7 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
 
           <button
             onClick={() => setAdvancedMode(!advancedMode)}
-            className={`text-xs px-4 py-2 rounded-lg border font-semibold transition-all duration-200 flex items-center gap-2
+            className={`text-xs px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg border font-semibold transition-all duration-200 flex items-center gap-1.5 sm:gap-2
               ${
                 advancedMode
                   ? "bg-[#FF6A3D] border-[#FF6A3D] text-white shadow-lg shadow-[#FF6A3D]/30"
@@ -303,12 +304,13 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
               }`}
           >
             <AnalysisIcon />
-            {advancedMode ? "Advanced ON" : "Analysis OFF"}
+            <span className="hidden sm:inline">{advancedMode ? "Advanced ON" : "Analysis OFF"}</span>
+            <span className="sm:hidden">{advancedMode ? "ON" : "OFF"}</span>
           </button>
 
           <button
             onClick={() => setUseStream(!useStream)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5
+            className={`text-xs px-2.5 sm:px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5
               ${
                 useStream
                   ? "bg-[#FF6A3D]/10 border-[#FF6A3D]/30 text-[#FF6A3D]"
@@ -321,7 +323,7 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
         </div>
 
         {/* Input */}
-        <div className="flex items-end gap-2.5 bg-[#2A2A2A] border border-white/10 rounded-2xl px-5 py-4 focus-within:border-[#FF6A3D]/50 focus-within:ring-1 focus-within:ring-[#FF6A3D]/10 transition">
+        <div className="flex items-end gap-2 sm:gap-2.5 bg-[#2A2A2A] border border-white/10 rounded-2xl px-3 sm:px-5 py-3 sm:py-4 focus-within:border-[#FF6A3D]/50 focus-within:ring-1 focus-within:ring-[#FF6A3D]/10 transition">
           <textarea
             ref={textareaRef}
             value={prompt}
@@ -352,7 +354,7 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
             </svg>
           </button>
         </div>
-        <p className="text-[10px] text-gray-600 text-center mt-2.5 font-medium">
+        <p className="text-[10px] text-gray-600 text-center mt-2 font-medium">
           Shift+Enter for new line · Enter to send
         </p>
       </div>

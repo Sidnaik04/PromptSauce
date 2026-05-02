@@ -20,8 +20,17 @@ const HeartIcon = () => (
   </svg>
 );
 
+const MenuIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="18" x2="21" y2="18" />
+  </svg>
+);
+
 export default function Dashboard() {
   const [advancedMode, setAdvancedMode] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const limitReached = useStore((s) => s.limitReached);
   const setLimitReached = useStore((s) => s.setLimitReached);
   const user = useStore((s) => s.user);
@@ -72,8 +81,22 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-[#1E1E1E] text-white">
+      {/* Mobile top bar */}
+      <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-[#2A2A2A] shrink-0">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="text-gray-400 hover:text-white transition p-1 rounded-lg hover:bg-white/5"
+          aria-label="Open sidebar"
+        >
+          <MenuIcon />
+        </button>
+        <span className="text-[#FF6A3D] font-bold text-base tracking-tight">
+          PromptSauce
+        </span>
+      </div>
+
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-col flex-1 overflow-hidden">
           <ChatWindow advancedMode={advancedMode} />
           <InputBox
@@ -83,7 +106,7 @@ export default function Dashboard() {
         </div>
       </div>
       {/* Footer */}
-      <footer className="text-center py-4 px-6 border-t border-white/5 text-gray-500 text-xs">
+      <footer className="text-center py-3 px-6 border-t border-white/5 text-gray-500 text-xs shrink-0">
         <div className="flex items-center justify-center gap-1.5 text-gray-400">
           <span className="text-[#FF6A3D]">
             <HeartIcon />

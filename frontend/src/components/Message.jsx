@@ -499,7 +499,7 @@ export default function Message({ msg, advancedMode }) {
   if (msg.role === "user") {
     return (
       <div className="flex justify-end mb-5">
-        <div className="max-w-2xl bg-[#FF6A3D]/10 border border-[#FF6A3D]/20 rounded-2xl rounded-tr-sm px-5 py-3.5">
+        <div className="max-w-[90%] sm:max-w-2xl bg-[#FF6A3D]/10 border border-[#FF6A3D]/20 rounded-2xl rounded-tr-sm px-4 sm:px-5 py-3 sm:py-3.5">
           <p className="text-sm text-white leading-relaxed">{msg.content}</p>
         </div>
       </div>
@@ -510,7 +510,7 @@ export default function Message({ msg, advancedMode }) {
   if (msg.role === "streaming") {
     return (
       <div className="flex justify-start mb-5">
-        <div className="max-w-2xl w-full bg-[#2A2A2A]/60 border border-[#FF6A3D]/40 rounded-2xl rounded-tl-sm px-5 py-4 backdrop-blur-sm shadow-lg shadow-[#FF6A3D]/10">
+        <div className="w-full bg-[#2A2A2A]/60 border border-[#FF6A3D]/40 rounded-2xl rounded-tl-sm px-4 sm:px-5 py-4 backdrop-blur-sm shadow-lg shadow-[#FF6A3D]/10">
           <div className="flex items-start gap-2 mb-2">
             <div className="flex gap-1 mt-1">
               <div
@@ -543,9 +543,9 @@ export default function Message({ msg, advancedMode }) {
     <div className="flex justify-start mb-5">
       {advancedMode ? (
         // Advanced mode: More detailed layout with evaluation
-        <div className="max-w-4xl w-full space-y-3">
+        <div className="w-full space-y-3">
           {/* Enhanced Prompt - Highlighted */}
-          <div className="bg-[#2A2A2A] border border-[#FF6A3D]/30 rounded-2xl rounded-tl-sm px-6 py-5">
+          <div className="bg-[#2A2A2A] border border-[#FF6A3D]/30 rounded-2xl rounded-tl-sm px-4 sm:px-6 py-4 sm:py-5">
             <p className="text-xs text-[#FF6A3D] uppercase tracking-widest mb-2.5 font-bold flex items-center gap-2">
               <span className="w-2 h-2 bg-[#FF6A3D] rounded-full"></span>
               <PromptsauceIcon width="14" height="14" />
@@ -558,7 +558,7 @@ export default function Message({ msg, advancedMode }) {
 
           {/* Evaluation Scores Grid */}
           {msg.evaluation && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="bg-[#2A2A2A] border border-white/10 rounded-xl px-4 py-4">
                 <p className="text-xs text-gray-500 uppercase tracking-widest mb-2 font-semibold">
                   Original Score
@@ -586,7 +586,7 @@ export default function Message({ msg, advancedMode }) {
 
           {/* Insights */}
           {msg.insights && (
-            <div className="bg-[#2A2A2A] border border-white/10 rounded-xl px-5 py-4">
+            <div className="bg-[#2A2A2A] border border-white/10 rounded-xl px-4 sm:px-5 py-4">
               <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 font-semibold">
                 Key insights
               </p>
@@ -611,7 +611,7 @@ export default function Message({ msg, advancedMode }) {
           )}
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex gap-2 pt-2 overflow-x-auto pb-1 no-scrollbar">
             <CopyButton text={msg.enhanced_prompt} />
             {PLATFORMS.map((p) => (
               <PlatformButton key={p.label} platform={p} />
@@ -620,7 +620,7 @@ export default function Message({ msg, advancedMode }) {
         </div>
       ) : (
         // Normal mode: Simpler, cleaner layout
-        <div className="max-w-2xl w-full bg-[#2A2A2A] border border-white/10 rounded-2xl rounded-tl-sm px-5 py-5">
+        <div className="w-full bg-[#2A2A2A] border border-white/10 rounded-2xl rounded-tl-sm px-4 sm:px-5 py-4 sm:py-5">
           <Section
             label={
               <span className="flex items-center gap-1.5">
@@ -632,7 +632,7 @@ export default function Message({ msg, advancedMode }) {
           />
 
           {/* Actions */}
-          <div className="mt-4.5 pt-3.5 border-t border-white/5 flex flex-wrap gap-2">
+          <div className="mt-4.5 pt-3.5 border-t border-white/5 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
             <CopyButton text={msg.enhanced_prompt} />
             {PLATFORMS.map((p) => (
               <PlatformButton key={p.label} platform={p} />

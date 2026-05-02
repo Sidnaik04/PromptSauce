@@ -14,7 +14,7 @@ export default function ChatWindow({ advancedMode }) {
 
   if (currentChat.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-6 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 overflow-y-auto">
         <div className="mb-6 opacity-80 flex justify-center">
           <PromptsauceIcon width="84" height="84" />
         </div>
@@ -27,16 +27,16 @@ export default function ChatWindow({ advancedMode }) {
             !
           </p>
         )}
-        <h2 className="text-2xl font-bold text-white mb-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-3">
           Improve Your Prompts
         </h2>
-        <p className="text-gray-400 text-base max-w-md leading-relaxed">
+        <p className="text-gray-400 text-sm sm:text-base max-w-md leading-relaxed">
           Type any prompt below.{" "}
           <span className="text-[#FF6A3D] font-medium">PromptSauce</span> will
           enhance it, explain improvements, and help you get better results from
           any LLM.
         </p>
-        <div className="mt-8 flex gap-4 text-sm text-gray-500">
+        <div className="mt-6 sm:mt-8 flex flex-wrap justify-center gap-3 sm:gap-4 text-sm text-gray-500">
           <span>✓ AI Enhancement</span>
           <span>✓ Evaluation</span>
           <span>✓ Learning</span>
@@ -46,7 +46,7 @@ export default function ChatWindow({ advancedMode }) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-6">
+    <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
       <div className="max-w-3xl mx-auto">
         {currentChat.map((msg, i) => (
           <Message key={i} msg={msg} advancedMode={advancedMode} />

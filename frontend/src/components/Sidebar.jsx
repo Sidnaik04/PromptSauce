@@ -41,7 +41,7 @@ const LogoutIcon = () => (
   </svg>
 );
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { history, setHistory, setCurrentChat, logout, user, token } =
     useStore();
   const navigate = useNavigate();
@@ -139,6 +139,18 @@ export default function Sidebar() {
     };
   }, [user, token]);
 
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   const handleSelect = (item) => {
     setCurrentChat([
       { role: "user", content: item.original_prompt },
@@ -149,6 +161,8 @@ export default function Sidebar() {
         insights: item.best_version?.insights || "",
       },
     ]);
+    // Close sidebar on mobile after selection
+    if (onClose) onClose();
   };
 
   const handleDelete = async (event, item) => {
@@ -180,6 +194,7 @@ export default function Sidebar() {
   const handleLogout = () => {
     logout();
     navigate("/");
+    if (onClose) onClose();
   };
 
   const groupedHistory = history
@@ -201,14 +216,29 @@ export default function Sidebar() {
     return modeLabel(a).localeCompare(modeLabel(b));
   });
 
-  return (
-    <div className="w-64 bg-[#2A2A2A] flex flex-col border-r border-white/5 shrink-0">
+  const sidebarContent = (
+    <div className="w-64 bg-[#2A2A2A] flex flex-col border-r border-white/5 h-full">
       {/* Top */}
       <div className="p-4 border-b border-white/5">
-        <span className="text-[#FF6A3D] font-bold text-lg tracking-tight flex items-center gap-2">
-          <PromptsauceIcon width="24" height="24" />
-          PromptSauce
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-[#FF6A3D] font-bold text-lg tracking-tight flex items-center gap-2">
+            <PromptsauceIcon width="24" height="24" />
+            PromptSauce
+          </span>
+          {/* Close button — mobile only */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="md:hidden text-gray-500 hover:text-white transition p-1 rounded-lg hover:bg-white/5"
+              aria-label="Close sidebar"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
         {user && (
           <div className="flex items-center gap-3 mt-3">
             {user.profile_picture ? (
@@ -233,7 +263,10 @@ export default function Sidebar() {
           </div>
         )}
         <button
-          onClick={() => setCurrentChat([])}
+          onClick={() => {
+            setCurrentChat([]);
+            if (onClose) onClose();
+          }}
           className="mt-3.5 w-full py-2.5 text-sm bg-[#FF6A3D]/10 hover:bg-[#FF6A3D]/15 text-[#FF6A3D] rounded-xl border border-[#FF6A3D]/20 transition font-medium duration-150 hover:shadow-lg hover:shadow-[#FF6A3D]/10"
         >
           ✚ New Chat
@@ -279,7 +312,7 @@ export default function Sidebar() {
                         title={item.original_prompt}
                         type="button"
                       >
-                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FF6A3D]/70 group-hover:bg-[#FF6A3D]"></span>
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FF6A3D]/70 group-hover:bg-[#FF6A3D] shrink-0"></span>
                         <div className="min-w-0">
                           <p className="text-[11px] text-gray-400 group-hover:text-gray-200 leading-snug">
                             {getPromptPreview(item.original_prompt)}
@@ -336,7 +369,7 @@ export default function Sidebar() {
           </div>
         )}
         <button
-          onClick={() => navigate("/api-key")}
+          onClick={() => { navigate("/api-key"); if (onClose) onClose(); }}
           className="w-full py-2.5 text-sm text-gray-400 hover:text-white bg-white/5 hover:bg-white/8 rounded-xl transition duration-150 font-medium flex items-center gap-2.5 justify-center"
         >
           <ApiKeyIcon />
@@ -351,5 +384,29 @@ export default function Sidebar() {
         </button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar — always visible */}
+      <div className="hidden md:flex shrink-0">
+        {sidebarContent}
+      </div>
+
+      {/* Mobile overlay drawer */}
+      {isOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          {/* Drawer */}
+          <div className="relative flex-shrink-0 z-10 animate-slide-in-left">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
