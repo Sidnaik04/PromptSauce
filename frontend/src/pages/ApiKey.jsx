@@ -32,6 +32,7 @@ export default function ApiKey() {
   const [usage, setUsage] = useState(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
   const navigate = useNavigate();
+  const setLimitReached = useStore((s) => s.setLimitReached);
 
   useEffect(() => {
     getApiKey()
@@ -53,6 +54,13 @@ export default function ApiKey() {
       .finally(() => setLoadingUsage(false));
   }, [token]);
 
+  // Ensure limitReached is cleared when leaving this page (including browser back)
+  useEffect(() => {
+    return () => {
+      setLimitReached(false);
+    };
+  }, [setLimitReached]);
+
   const handleSave = async () => {
     if (!apiKey.trim()) return;
 
@@ -72,6 +80,7 @@ export default function ApiKey() {
 
       setStoredApiKey(apiKey, user, token);
       notifyApiKeyChanged();
+      setLimitReached(false);
       notifyUsageRefresh();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -89,7 +98,10 @@ export default function ApiKey() {
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => {
+              setLimitReached(false);
+              navigate("/dashboard");
+            }}
             className="text-gray-500 hover:text-white transition text-sm"
           >
             ← Back
