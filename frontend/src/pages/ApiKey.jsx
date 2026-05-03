@@ -100,7 +100,7 @@ export default function ApiKey() {
           <button
             onClick={() => {
               setLimitReached(false);
-              navigate(-1);
+              navigate("/dashboard");
             }}
             className="text-gray-500 hover:text-white transition text-sm"
           >

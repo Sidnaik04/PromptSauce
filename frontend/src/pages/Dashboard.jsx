@@ -94,7 +94,7 @@ export default function Dashboard() {
     if (navigationType === "POP") return;
 
     if (limitReached && !hasApiKey) {
-      navigate("/api-key", { replace: true });
+      navigate("/api-key");
     }
   }, [limitReached, hasApiKey, navigate, navigationType]);
 
