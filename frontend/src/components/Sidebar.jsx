@@ -232,7 +232,16 @@ export default function Sidebar({ isOpen, onClose }) {
               className="md:hidden text-gray-500 hover:text-white transition p-1 rounded-lg hover:bg-white/5"
               aria-label="Close sidebar"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -369,7 +378,10 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
         )}
         <button
-          onClick={() => { navigate("/api-key"); if (onClose) onClose(); }}
+          onClick={() => {
+            navigate("/api-key", { replace: true });
+            if (onClose) onClose();
+          }}
           className="w-full py-2.5 text-sm text-gray-400 hover:text-white bg-white/5 hover:bg-white/8 rounded-xl transition duration-150 font-medium flex items-center gap-2.5 justify-center"
         >
           <ApiKeyIcon />
@@ -389,9 +401,7 @@ export default function Sidebar({ isOpen, onClose }) {
   return (
     <>
       {/* Desktop sidebar — always visible */}
-      <div className="hidden md:flex shrink-0">
-        {sidebarContent}
-      </div>
+      <div className="hidden md:flex shrink-0">{sidebarContent}</div>
 
       {/* Mobile overlay drawer */}
       {isOpen && (
