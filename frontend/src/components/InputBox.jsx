@@ -157,7 +157,7 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
             };
             return updated;
           });
-          setTimeout(() => navigate("/api-key"), 1500);
+          setTimeout(() => navigate("/api-key", { replace: true }), 1500);
         } else {
           const message = err?.message || "Error: could not reach backend.";
           setCurrentChat((prev) => {
@@ -202,7 +202,7 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
             explanation: "",
             insights: "",
           });
-          setTimeout(() => navigate("/api-key"), 1500);
+          setTimeout(() => navigate("/api-key", { replace: true }), 1500);
         } else {
           addMessage({
             role: "assistant",
@@ -304,7 +304,9 @@ export default function InputBox({ advancedMode, setAdvancedMode }) {
               }`}
           >
             <AnalysisIcon />
-            <span className="hidden sm:inline">{advancedMode ? "Advanced ON" : "Analysis OFF"}</span>
+            <span className="hidden sm:inline">
+              {advancedMode ? "Advanced ON" : "Analysis OFF"}
+            </span>
             <span className="sm:hidden">{advancedMode ? "ON" : "OFF"}</span>
           </button>
 
