@@ -200,7 +200,9 @@ export default function Home() {
               className="bg-[#2A2A2A] rounded-2xl p-5 sm:p-6 flex flex-col gap-3 border border-white/5 hover:border-white/10 hover:shadow-lg transition duration-150"
             >
               <span className="text-3xl text-[#FF6A3D]">{f.icon}</span>
-              <h3 className="font-bold text-white text-base sm:text-lg">{f.title}</h3>
+              <h3 className="font-bold text-white text-base sm:text-lg">
+                {f.title}
+              </h3>
               <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
             </div>
           ))}
@@ -213,7 +215,15 @@ export default function Home() {
           <span className="text-[#FF6A3D]">
             <HeartIcon />
           </span>
-          Developed by Sidnaik04
+          Developed by{" "}
+          <a
+            href="https://github.com/Sidnaik04"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white transition"
+          >
+            Sidnaik04
+          </a>
         </div>
       </footer>
     </div>

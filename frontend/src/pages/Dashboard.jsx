@@ -130,7 +130,15 @@ export default function Dashboard() {
           <span className="text-[#FF6A3D]">
             <HeartIcon />
           </span>
-          Developed by Sidnaik04
+          Developed by{" "}
+          <a
+            href="https://github.com/Sidnaik04"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white transition"
+          >
+            Sidnaik04
+          </a>
         </div>
       </footer>
     </div>
