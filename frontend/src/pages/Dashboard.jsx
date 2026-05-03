@@ -50,6 +50,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     let isActive = true;
+
+    // Skip usage checks if user navigated here via browser Back/Forward
+    if (navigationType === "POP") {
+      return;
+    }
+
     const cachedKey = getStoredApiKey(user, token);
     if (cachedKey) {
       setLimitReached(false);
@@ -80,7 +86,7 @@ export default function Dashboard() {
     return () => {
       isActive = false;
     };
-  }, [setLimitReached, token, user]);
+  }, [setLimitReached, token, user, navigationType]);
 
   // Redirect to API key page when free limit is reached
   useEffect(() => {
@@ -90,7 +96,7 @@ export default function Dashboard() {
     if (limitReached && !hasApiKey) {
       navigate("/api-key", { replace: true });
     }
-  }, [limitReached, hasApiKey, navigate]);
+  }, [limitReached, hasApiKey, navigate, navigationType]);
 
   return (
     <div className="flex flex-col h-screen bg-[#1E1E1E] text-white">
