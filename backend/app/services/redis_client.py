@@ -1,4 +1,6 @@
-import redis
-from app.core.config import settings
+"""
+Redis client with fallback support.
+Uses FallbackRedis which gracefully falls back to in-memory store if Redis is unavailable.
+"""
 
-redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+from app.services.redis_fallback import redis_client
