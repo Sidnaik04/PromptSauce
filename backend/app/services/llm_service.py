@@ -8,6 +8,11 @@ class LLMService:
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.provider = settings.LLM_PROVIDER
 
+        if not self.api_key or not str(self.api_key).strip():
+            raise ValueError(
+                "Gemini API key is not configured. Set GEMINI_API_KEY on the backend or save an API key for the user."
+            )
+
     def _get_client(self):
         if self.provider == "gemini":
             from langchain_google_genai import ChatGoogleGenerativeAI
