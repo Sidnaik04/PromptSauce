@@ -12,11 +12,7 @@ app = FastAPI(title="PromptSauce API")
 # CORS middleware configuration for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "https://prompt-sauce.vercel.app",
-    ],
+    allow_origins=["*"],
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=False,
     allow_methods=["*"],
