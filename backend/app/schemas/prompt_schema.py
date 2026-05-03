@@ -10,6 +10,7 @@ class Preferences(BaseModel):
 class Metadata(BaseModel):
     user_id: Optional[str] = None
     session_id: Optional[str] = None
+    api_key: Optional[str] = None
 
 
 class PromptRequest(BaseModel):
@@ -32,9 +33,3 @@ class PromptRequest(BaseModel):
     preferences: Preferences | None = None
     metadata: Optional[Metadata] = None
     evaluate: bool = False
-
-
-class Metadata(BaseModel):
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    api_key: Optional[str] = None

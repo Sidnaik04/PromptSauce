@@ -39,162 +39,179 @@ async def enhance_prompt(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    data = request.model_dump()
+    try:
+        data = request.model_dump()
 
-    if len(data.get("prompt", "")) > 2000:
-        raise HTTPException(status_code=400, detail="Prompt too long")
+        if len(data.get("prompt", "")) > 2000:
+            raise HTTPException(status_code=400, detail="Prompt too long")
 
-    metadata = data.get("metadata", {}) or {}
-    user_id = str(user.id)
+        metadata = data.get("metadata", {}) or {}
+        user_id = str(user.id)
 
-    user_api_key = metadata.get("api_key")
+        user_api_key = metadata.get("api_key")
 
-    # If no API key in request, try to retrieve saved API key from database
-    if not user_api_key:
-        db_user = db.query(models.User).filter_by(id=user.id).first()
-        if db_user and db_user.api_key:
-            user_api_key = db_user.api_key
-            logger.info(f"Retrieved saved API key for user: {user_id}")
-        else:
-            logger.warning(f"No API key found for user: {user_id}")
+        # If no API key in request, try to retrieve saved API key from database
+        if not user_api_key:
+            db_user = db.query(models.User).filter_by(id=user.id).first()
+            if db_user and db_user.api_key:
+                user_api_key = db_user.api_key
+                logger.info(f"Retrieved saved API key for user: {user_id}")
+            else:
+                logger.warning(f"No API key found for user: {user_id}")
 
-    count = 0
-    if not user_api_key:
-        is_limited, count = is_rate_limited(user_id)
-        if is_limited:
+        count = 0
+        if not user_api_key:
+            is_limited, count = is_rate_limited(user_id)
+            if is_limited:
+                raise HTTPException(
+                    status_code=429, detail=f"Rate limit exceeded. Try again later."
+                )
+
+        allowed, mode = check_usage_limit(db, user_id, bool(user_api_key))
+        logger.info(f"User: {user_id}, Mode: {mode}, Has API Key: {bool(user_api_key)}")
+
+        if not allowed:
             raise HTTPException(
-                status_code=429, detail=f"Rate limit exceeded. Try again later."
+                status_code=403,
+                detail="Free usage limit exceeded. Please provide your API key.",
             )
 
-    allowed, mode = check_usage_limit(db, user_id, bool(user_api_key))
-    logger.info(f"User: {user_id}, Mode: {mode}, Has API Key: {bool(user_api_key)}")
+        llm = LLMService(api_key=user_api_key)
 
-    if not allowed:
-        raise HTTPException(
-            status_code=403,
-            detail="Free usage limit exceeded. Please provide your API key.",
+        cache_input = {
+            "prompt": data.get("prompt"),
+            "mode": data.get("mode"),
+            "context": data.get("context"),
+            "preferences": data.get("preferences"),
+            "evaluate": data.get("evaluate"),
+        }
+
+        cached = None
+        if not user_api_key:
+            cached = get_cached(cache_input)
+
+        if cached:
+            logger.info(f"Cache hit for user: {user_id}")
+            # Log cached usage
+            prompt_tokens = estimate_tokens(data.get("prompt", ""))
+            response_tokens = estimate_tokens(cached.get("enhanced_prompt", ""))
+
+            log = models.UsageLog(
+                user_id=user_id,
+                prompt_tokens=prompt_tokens,
+                response_tokens=response_tokens,
+                cached=True,
+            )
+            db.add(log)
+            db.commit()
+
+            return {**cached, "cached": True}
+
+        result = await graph.ainvoke(
+            {
+                "input": data,
+                "debug": {},
+                "evaluate": data.get("evaluate", False),
+                "llm": llm,
+            }
         )
 
-    llm = LLMService(api_key=user_api_key)
+        logger.info(f"Graph result explanation: {result.get('explanation')}")
+        logger.info(f"Graph result insights: {result.get('insights')}")
 
-    cache_input = {
-        "prompt": data.get("prompt"),
-        "mode": data.get("mode"),
-        "context": data.get("context"),
-        "preferences": data.get("preferences"),
-        "evaluate": data.get("evaluate"),
-    }
+        response_data = {
+            "enhanced_prompt": result.get("enhanced_prompt"),
+            "analysis": result.get("analysis"),
+            "evaluation": result.get("evaluation"),
+            "critic": result.get("critic"),
+            "explanation": result.get("explanation")
+            or "Enhancement applied successfully.",
+            "insights": result.get("insights"),
+            "usage_mode": mode,
+        }
 
-    cached = None
-    if not user_api_key:
-        cached = get_cached(cache_input)
+        if not user_api_key:
+            set_cache(cache_input, response_data)
 
-    if cached:
-        logger.info(f"Cache hit for user: {user_id}")
-        # Log cached usage
+        # Log usage
         prompt_tokens = estimate_tokens(data.get("prompt", ""))
-        response_tokens = estimate_tokens(cached.get("enhanced_prompt", ""))
+        response_tokens = estimate_tokens(result.get("enhanced_prompt", ""))
 
         log = models.UsageLog(
             user_id=user_id,
             prompt_tokens=prompt_tokens,
             response_tokens=response_tokens,
-            cached=True,
+            cached=False,
         )
         db.add(log)
         db.commit()
 
-        return {**cached, "cached": True}
+        if mode == "free":
+            track_usage(db, user_id)
 
-    result = await graph.ainvoke(
-        {
-            "input": data,
-            "debug": {},
-            "evaluate": data.get("evaluate", False),
-            "llm": llm,
+        prompt_record = save_prompt(db, {**data, "metadata": {"user_id": user_id}})
+        logger.info(f"Saved prompt {prompt_record.id} for user {user_id}")
+
+        version = save_prompt_version(
+            db, prompt_record.id, result.get("enhanced_prompt")
+        )
+
+        if result.get("evaluation"):
+            scores = result["evaluation"]["scores"]["enhanced"]
+            avg_score = sum(scores.values()) / len(scores)
+
+            version.score = avg_score
+            db.commit()
+
+            mark_best_version(db, prompt_record.id, version.id)
+
+            if avg_score >= 8:  # only learn from good outputs
+                pattern = extract_pattern(result["enhanced_prompt"])
+                update_user_preferences(db, user_id, pattern)
+
+        response = {
+            "enhanced_prompt": result.get("enhanced_prompt"),
+            "explanation": result.get("explanation")
+            or "Enhancement applied successfully.",
+            "insights": result.get("insights"),
+            "evaluation": result.get("evaluation"),
+            "usage_mode": mode,
         }
-    )
 
-    logger.info(f"Graph result explanation: {result.get('explanation')}")
-    logger.info(f"Graph result insights: {result.get('insights')}")
+        # Normalize error responses
+        if "Error generating prompt" in result.get("enhanced_prompt", ""):
+            return {
+                "status": "error",
+                "error": "Unable to process request. Please try again.",
+            }
 
-    response_data = {
-        "enhanced_prompt": result.get("enhanced_prompt"),
-        "analysis": result.get("analysis"),
-        "evaluation": result.get("evaluation"),
-        "critic": result.get("critic"),
-        "explanation": result.get("explanation") or "Enhancement applied successfully.",
-        "insights": result.get("insights"),
-        "usage_mode": mode,
-    }
+        if not result.get("enhanced_prompt"):
+            return {
+                "status": "error",
+                "error": "LLM service unavailable. Try again later.",
+            }
 
-    if not user_api_key:
-        set_cache(cache_input, response_data)
+        response["rate_limit"] = {"current": count, "limit": 3}
 
-    # Log usage
-    prompt_tokens = estimate_tokens(data.get("prompt", ""))
-    response_tokens = estimate_tokens(result.get("enhanced_prompt", ""))
+        if settings.DEBUG:
+            response["debug"] = result.get("debug")
 
-    log = models.UsageLog(
-        user_id=user_id,
-        prompt_tokens=prompt_tokens,
-        response_tokens=response_tokens,
-        cached=False,
-    )
-    db.add(log)
-    db.commit()
-
-    if mode == "free":
-        track_usage(db, user_id)
-
-    prompt_record = save_prompt(db, {**data, "metadata": {"user_id": user_id}})
-    logger.info(f"Saved prompt {prompt_record.id} for user {user_id}")
-
-    version = save_prompt_version(db, prompt_record.id, result.get("enhanced_prompt"))
-
-    if result.get("evaluation"):
-        scores = result["evaluation"]["scores"]["enhanced"]
-        avg_score = sum(scores.values()) / len(scores)
-
-        version.score = avg_score
-        db.commit()
-
-        mark_best_version(db, prompt_record.id, version.id)
-
-        if avg_score >= 8:  # only learn from good outputs
-            pattern = extract_pattern(result["enhanced_prompt"])
-            update_user_preferences(db, user_id, pattern)
-
-    response = {
-        "enhanced_prompt": result.get("enhanced_prompt"),
-        "explanation": result.get("explanation") or "Enhancement applied successfully.",
-        "insights": result.get("insights"),
-        "evaluation": result.get("evaluation"),
-        "usage_mode": mode,
-    }
-
-    # Normalize error responses
-    if "Error generating prompt" in result.get("enhanced_prompt", ""):
         return {
-            "status": "error",
-            "error": "Unable to process request. Please try again.",
+            "status": "success",
+            "data": response,
         }
 
-    if not result.get("enhanced_prompt"):
-        return {
-            "status": "error",
-            "error": "LLM service unavailable. Try again later.",
-        }
-
-    response["rate_limit"] = {"current": count, "limit": 3}
-
-    if settings.DEBUG:
-        response["debug"] = result.get("debug")
-
-    return {
-        "status": "success",
-        "data": response,
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Enhance error: {str(e)}")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "detail": "Unable to process request right now.",
+            },
+        )
 
 
 @router.post("/enhance/stream")
