@@ -40,3 +40,32 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/health/debug")
+def health_debug():
+    """Diagnostic endpoint to verify environment setup (masked secrets)."""
+    from app.core.config import settings
+
+    # Mask API key - show only last 4 chars
+    gemini_key_present = bool(settings.GEMINI_API_KEY)
+    gemini_key_mask = ""
+    if gemini_key_present:
+        try:
+            key_str = str(settings.GEMINI_API_KEY)
+            gemini_key_mask = (
+                f"****{key_str[-4:]}" if len(key_str) > 4 else ("*" * len(key_str))
+            )
+        except Exception:
+            gemini_key_mask = "(invalid-key)"
+
+    return {
+        "status": "ok",
+        "environment": settings.ENV,
+        "debug": settings.DEBUG,
+        "llm_provider": settings.LLM_PROVIDER,
+        "gemini_api_key_present": gemini_key_present,
+        "gemini_api_key_mask": gemini_key_mask if gemini_key_present else "(not set)",
+        "database_url_present": bool(settings.DATABASE_URL),
+        "redis_url_present": bool(settings.REDIS_URL),
+    }

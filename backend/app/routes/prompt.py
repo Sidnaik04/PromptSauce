@@ -305,8 +305,12 @@ async def enhance_prompt_stream(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Stream setup error: {str(e)}")
+        logger.exception(f"Stream setup error - Full traceback: {str(e)}")
+        logger.error(f"Stream setup error exception type: {type(e).__name__}")
         return JSONResponse(
             status_code=500,
-            content={"detail": "Unable to start streaming response."},
+            content={
+                "detail": "Unable to start streaming response.",
+                "error": str(e) if settings.DEBUG else "Internal server error",
+            },
         )
