@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
-import { login, signup, googleAuth, verifyEmail } from "../services/api";
+import { BASE_URL, fetchWithRetry } from "../services/api";
 import useStore from "../store/useStore";
 import { PromptsauceIcon } from "../components/PromptsauceIcon";
 
@@ -30,20 +30,13 @@ export default function Auth() {
       const payload =
         tab === "login" ? { email, password } : { email, password, username };
 
-      const response = await fetch(`http://localhost:8000/auth/${endpoint}`, {
+      const response = await fetchWithRetry(`${BASE_URL}/auth/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const res = await response.json();
-
-      if (!response.ok) {
-        // API returned an error response
-        console.error(`${endpoint} error:`, res);
-        setError(res.detail || `${endpoint} failed. Please try again.`);
-        return;
-      }
 
       if (tab === "signup" && res.verify_token) {
         // Show verification screen
@@ -70,19 +63,13 @@ export default function Auth() {
     setError("");
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/auth/verify-email", {
+      const response = await fetchWithRetry(`${BASE_URL}/auth/verify-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verify_token: verifyToken }),
       });
 
       const res = await response.json();
-
-      if (!response.ok) {
-        console.error("Verify email error:", res);
-        setError(res.detail || "Verification failed. Token may have expired.");
-        return;
-      }
 
       if (res.access_token) {
         setToken(res.access_token);
@@ -107,19 +94,13 @@ export default function Auth() {
     setError("");
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/auth/google", {
+      const response = await fetchWithRetry(`${BASE_URL}/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: credentialResponse.credential }),
       });
 
       const res = await response.json();
-
-      if (!response.ok) {
-        console.error("Google auth error:", res);
-        setError(res.detail || "Google authentication failed.");
-        return;
-      }
 
       if (res.access_token) {
         setToken(res.access_token);

@@ -34,3 +34,8 @@ init_db()
 @app.get("/")
 def root():
     return {"message": "PromptSauce backend running"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}

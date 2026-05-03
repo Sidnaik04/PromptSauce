@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiKey, getUsage } from "../services/api";
+import { BASE_URL, fetchWithRetry, getApiKey, getUsage } from "../services/api";
 import {
   getStoredApiKey,
   notifyApiKeyChanged,
@@ -23,7 +23,9 @@ const StatCard = ({ label, value, accent }) => (
 export default function ApiKey() {
   const user = useStore((s) => s.user);
   const token = useStore((s) => s.token);
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(
+    () => getStoredApiKey(user, token) || "",
+  );
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -32,12 +34,6 @@ export default function ApiKey() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const cachedKey = getStoredApiKey(user, token);
-
-    if (cachedKey) {
-      setApiKey(cachedKey);
-    }
-
     getApiKey()
       .then((res) => {
         const nextKey = res.data?.api_key ?? res.api_key ?? "";
@@ -65,7 +61,7 @@ export default function ApiKey() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8000/auth/save-api-key", {
+      await fetchWithRetry(`${BASE_URL}/auth/save-api-key`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -73,11 +69,6 @@ export default function ApiKey() {
         },
         body: JSON.stringify({ api_key: apiKey }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to save API key");
-      }
 
       setStoredApiKey(apiKey, user, token);
       notifyApiKeyChanged();

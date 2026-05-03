@@ -1,4 +1,55 @@
-const BASE_URL = "http://localhost:8000";
+export const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_BASE ||
+  "http://localhost:8000";
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const fetchWithRetry = async (url, options, retries = 2) => {
+  try {
+    const res = await fetch(url, options);
+
+    if (!res.ok) {
+      let detail = "Request failed";
+      try {
+        const data = await res.json();
+        detail = data.detail || data.error || detail;
+      } catch {
+        // ignore parse issues and use fallback detail
+      }
+      const error = new Error(detail);
+      error.status = res.status;
+      throw error;
+    }
+
+    return res;
+  } catch (err) {
+    if (retries > 0) {
+      console.log("Retrying request...");
+      await sleep(3000);
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw err;
+  }
+};
+
+export const warmUpBackend = async () => {
+  const start = Date.now();
+
+  try {
+    await fetch(`${BASE_URL}/health`);
+    const time = Date.now() - start;
+
+    if (time > 3000) {
+      console.log("Cold start detected");
+    }
+
+    return true;
+  } catch {
+    console.log("Warmup failed (expected if sleeping)");
+    return false;
+  }
+};
 
 const getHeaders = () => {
   const token = localStorage.getItem("token");
@@ -9,69 +60,69 @@ const getHeaders = () => {
 };
 
 export const login = (email, password) =>
-  fetch(`${BASE_URL}/auth/login`, {
+  fetchWithRetry(`${BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   }).then((r) => r.json());
 
 export const signup = (email, password, username) =>
-  fetch(`${BASE_URL}/auth/signup`, {
+  fetchWithRetry(`${BASE_URL}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, username }),
   }).then((r) => r.json());
 
 export const verifyEmail = (verify_token) =>
-  fetch(`${BASE_URL}/auth/verify-email`, {
+  fetchWithRetry(`${BASE_URL}/auth/verify-email`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ verify_token }),
   }).then((r) => r.json());
 
 export const googleAuth = (token) =>
-  fetch(`${BASE_URL}/auth/google`, {
+  fetchWithRetry(`${BASE_URL}/auth/google`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
   }).then((r) => r.json());
 
 export const getApiKey = () =>
-  fetch(`${BASE_URL}/auth/api-key`, { headers: getHeaders() }).then((r) =>
-    r.json(),
+  fetchWithRetry(`${BASE_URL}/auth/api-key`, { headers: getHeaders() }).then(
+    (r) => r.json(),
   );
 
 export const enhance = (payload) =>
-  fetch(`${BASE_URL}/api/enhance`, {
+  fetchWithRetry(`${BASE_URL}/api/enhance`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify(payload),
   }).then((r) => r.json());
 
 export const getHistory = () =>
-  fetch(`${BASE_URL}/history/prompts`, { headers: getHeaders() }).then((r) =>
-    r.json(),
-  );
-
-export const getUsage = () =>
-  fetch(`${BASE_URL}/usage/summary`, { headers: getHeaders() }).then((r) =>
-    r.json(),
-  );
-
-export const getSuggestions = () =>
-  fetch(`${BASE_URL}/history/suggestions`, { headers: getHeaders() }).then(
+  fetchWithRetry(`${BASE_URL}/history/prompts`, { headers: getHeaders() }).then(
     (r) => r.json(),
   );
 
+export const getUsage = () =>
+  fetchWithRetry(`${BASE_URL}/usage/summary`, { headers: getHeaders() }).then(
+    (r) => r.json(),
+  );
+
+export const getSuggestions = () =>
+  fetchWithRetry(`${BASE_URL}/history/suggestions`, {
+    headers: getHeaders(),
+  }).then((r) => r.json());
+
 export const deletePrompt = (promptId) =>
-  fetch(`${BASE_URL}/history/prompts/${promptId}`, {
+  fetchWithRetry(`${BASE_URL}/history/prompts/${promptId}`, {
     method: "DELETE",
     headers: getHeaders(),
   }).then((r) => r.json());
 
 export const streamEnhance = async (payload, onChunk, onDone) => {
   const token = localStorage.getItem("token");
-  const res = await fetch(`${BASE_URL}/api/enhance/stream`, {
+  const res = await fetchWithRetry(`${BASE_URL}/api/enhance/stream`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -80,22 +131,8 @@ export const streamEnhance = async (payload, onChunk, onDone) => {
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
-    let detail = "Request failed";
-    try {
-      const data = await res.json();
-      detail = data.detail || data.error || detail;
-    } catch {
-      // ignore parsing error
-    }
-    const error = new Error(detail);
-    error.status = res.status;
-    throw error;
-  }
-
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  let fullText = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -104,7 +141,6 @@ export const streamEnhance = async (payload, onChunk, onDone) => {
       break;
     }
     const chunk = decoder.decode(value);
-    fullText += chunk;
     onChunk(chunk);
   }
 };
