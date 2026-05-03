@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useNavigationType } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import ChatWindow from "../components/ChatWindow";
 import InputBox from "../components/InputBox";
@@ -21,7 +21,16 @@ const HeartIcon = () => (
 );
 
 const MenuIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <line x1="3" y1="6" x2="21" y2="6" />
     <line x1="3" y1="12" x2="21" y2="12" />
     <line x1="3" y1="18" x2="21" y2="18" />
@@ -36,6 +45,7 @@ export default function Dashboard() {
   const user = useStore((s) => s.user);
   const token = useStore((s) => s.token);
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const hasApiKey = hasStoredApiKey(user, token);
 
   useEffect(() => {
@@ -74,6 +84,9 @@ export default function Dashboard() {
 
   // Redirect to API key page when free limit is reached
   useEffect(() => {
+    // Avoid auto-redirect when the user navigated via browser Back/Forward (POP)
+    if (navigationType === "POP") return;
+
     if (limitReached && !hasApiKey) {
       navigate("/api-key");
     }
